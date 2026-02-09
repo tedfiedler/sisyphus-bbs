@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+asyncssh
+jinja2
+python-multipart
+aiosqlite
+pydantic
+python-dotenv
+bcrypt
+websockets
+pytest
+pytest-asyncio
+httpx

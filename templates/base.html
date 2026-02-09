@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ bbs_name }} - {% block title %}Welcome{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    {% if user is defined and user %}
+    <header>
+        <h1>{{ bbs_name }}</h1>
+        <nav>
+            <a href="/boards">Boards</a>
+            <a href="/files">Files</a>
+            <a href="/chat">Chat</a>
+            <span class="meta">[ {{ user.username }} ]</span>
+            <a href="/logout">Logout</a>
+        </nav>
+    </header>
+    {% endif %}
+    {% block content %}{% endblock %}
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

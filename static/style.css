@@ -1,0 +1,194 @@
+:root {
+    --bg: #0a0a0a;
+    --fg: #00ff41;
+    --dim: #007a1f;
+    --accent: #00bfff;
+    --warn: #ff6600;
+    --border: #333;
+    --input-bg: #111;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Courier New", "Lucida Console", monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 0 15px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 { color: var(--accent); font-size: 20px; }
+
+nav a {
+    margin-left: 15px;
+    color: var(--dim);
+    font-size: 13px;
+}
+nav a:hover { color: var(--fg); }
+
+.box {
+    border: 1px solid var(--border);
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.box h2 {
+    color: var(--accent);
+    font-size: 16px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+}
+
+input, textarea, select {
+    background: var(--input-bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    padding: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+input:focus, textarea:focus { border-color: var(--accent); outline: none; }
+
+textarea { min-height: 100px; resize: vertical; }
+
+button, .btn {
+    background: var(--dim);
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+button:hover, .btn:hover { background: var(--fg); }
+
+.error { color: var(--warn); margin-bottom: 10px; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
+
+.meta { color: var(--dim); font-size: 12px; }
+
+.post {
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-size: 13px;
+}
+
+.post-body { white-space: pre-wrap; }
+
+.breadcrumb {
+    color: var(--dim);
+    font-size: 12px;
+    margin-bottom: 15px;
+}
+
+.breadcrumb a { color: var(--dim); }
+.breadcrumb a:hover { color: var(--fg); }
+
+.login-box {
+    max-width: 400px;
+    margin: 60px auto;
+}
+
+.login-box pre {
+    color: var(--accent);
+    font-size: 11px;
+    line-height: 1.2;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 15px;
+}
+
+.tab {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    color: var(--dim);
+    background: transparent;
+    text-transform: none;
+    font-weight: normal;
+}
+
+.tab.active { color: var(--fg); border-bottom-color: var(--bg); }
+
+#chat-messages {
+    height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+#chat-messages .msg-user { color: var(--accent); }
+#chat-messages .msg-time { color: var(--dim); font-size: 11px; }
+
+#chat-input {
+    display: flex;
+    gap: 8px;
+}
+
+#chat-input input { flex: 1; margin-bottom: 0; }
+#chat-input button { width: 80px; }
+
+.badge {
+    display: inline-block;
+    background: var(--dim);
+    color: #000;
+    padding: 1px 6px;
+    font-size: 11px;
+    margin-left: 5px;
+}
+
+.pinned { border-left: 3px solid var(--warn); }

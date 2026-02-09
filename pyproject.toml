@@ -1,0 +1,23 @@
+[project]
+name = "sisyphus-bbs"
+version = "1.0.0"
+description = "A modern hybrid BBS with terminal and web access"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "asyncssh",
+    "jinja2",
+    "python-multipart",
+    "aiosqlite",
+    "pydantic",
+    "python-dotenv",
+    "bcrypt",
+    "websockets",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "httpx"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

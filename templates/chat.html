@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Chat{% endblock %}
+{% block content %}
+<div class="box">
+    <h2>Chat - #lobby</h2>
+    <div id="chat-messages">
+        {% for msg in recent_messages %}
+        <div>
+            <span class="msg-time">[{{ msg.created_at }}]</span>
+            <span class="msg-user">&lt;{{ msg.username }}&gt;</span>
+            {{ msg.message }}
+        </div>
+        {% endfor %}
+    </div>
+    <div id="chat-input">
+        <input type="text" id="msg-input" placeholder="Type a message..." autofocus>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ws = new WebSocket(`ws://${location.host}/ws/chat`);
+const msgDiv = document.getElementById('chat-messages');
+const msgInput = document.getElementById('msg-input');
+let connected = false;
+
+ws.onopen = () => {
+    connected = true;
+    // Clear pre-rendered messages once we get history from WS
+};
+
+ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    appendMessage(data);
+};
+
+ws.onclose = () => {
+    connected = false;
+    appendSystem('Disconnected from chat.');
+};
+
+function appendMessage(data) {
+    const div = document.createElement('div');
+    const time = data.timestamp ? data.timestamp.substring(11, 19) : '';
+    div.innerHTML = `<span class="msg-time">[${time || data.created_at || ''}]</span> <span class="msg-user">&lt;${data.username}&gt;</span> ${escapeHtml(data.message)}`;
+    msgDiv.appendChild(div);
+    msgDiv.scrollTop = msgDiv.scrollHeight;
+}
+
+function appendSystem(text) {
+    const div = document.createElement('div');
+    div.style.color = 'var(--warn)';
+    div.textContent = '*** ' + text;
+    msgDiv.appendChild(div);
+    msgDiv.scrollTop = msgDiv.scrollHeight;
+}
+
+function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text || !connected) return;
+    ws.send(JSON.stringify({ message: text }));
+    msgInput.value = '';
+}
+
+msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+</script>
+{% endblock %}

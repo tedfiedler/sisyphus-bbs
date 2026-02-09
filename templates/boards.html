@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Message Boards{% endblock %}
+{% block content %}
+<div class="box">
+    <h2>Message Boards</h2>
+    {% if boards %}
+    <table>
+        <tr>
+            <th>Board</th>
+            <th>Description</th>
+            <th>Threads</th>
+            <th>Posts</th>
+        </tr>
+        {% for board in boards %}
+        <tr>
+            <td><a href="/boards/{{ board.id }}">{{ board.name }}</a></td>
+            <td class="meta">{{ board.description }}</td>
+            <td>{{ board.thread_count }}</td>
+            <td>{{ board.post_count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="meta">No boards yet. Create one below.</p>
+    {% endif %}
+</div>
+
+<div class="box">
+    <h2>Create Board</h2>
+    <form method="post" action="/boards/create">
+        <input type="text" name="name" placeholder="Board name" required>
+        <input type="text" name="description" placeholder="Description (optional)">
+        <button type="submit">Create Board</button>
+    </form>
+</div>
+{% endblock %}

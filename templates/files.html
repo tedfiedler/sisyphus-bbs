@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}File Areas{% endblock %}
+{% block content %}
+<div class="box">
+    <h2>File Areas</h2>
+    <div style="margin-bottom: 10px;">
+        <a href="/files">All</a>
+        {% for a in areas %}
+        | <a href="/files?area={{ a }}"{% if current_area == a %} style="color: var(--fg)"{% endif %}>{{ a }}</a>
+        {% endfor %}
+    </div>
+
+    {% if files %}
+    <table>
+        <tr>
+            <th>Filename</th>
+            <th>Area</th>
+            <th>Size</th>
+            <th>Uploader</th>
+            <th>Downloads</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+        {% for f in files %}
+        <tr>
+            <td>{{ f.filename }}</td>
+            <td>{{ f.area }}</td>
+            <td class="meta">{{ (f.size_bytes / 1024) | round(1) }} KB</td>
+            <td>{{ f.uploader_name }}</td>
+            <td>{{ f.download_count }}</td>
+            <td class="meta">{{ f.uploaded_at }}</td>
+            <td><a href="/files/download/{{ f.id }}">DL</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="meta">No files uploaded yet.</p>
+    {% endif %}
+</div>
+
+<div class="box">
+    <h2>Upload File</h2>
+    <form method="post" action="/files/upload" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <input type="text" name="area" placeholder="Area (default: general)" value="general">
+        <input type="text" name="description" placeholder="Description (optional)">
+        <button type="submit">Upload</button>
+    </form>
+</div>
+{% endblock %}

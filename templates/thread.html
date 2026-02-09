@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{% if thread %}{{ thread.subject }}{% else %}{{ board.name }}{% endif %}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+    <a href="/boards">Boards</a> &raquo;
+    <a href="/boards/{{ board.id }}">{{ board.name }}</a>
+    {% if thread %} &raquo; {{ thread.subject }}{% endif %}
+</div>
+
+{% if thread and posts is not none %}
+{# Viewing a thread with its posts #}
+<div class="box">
+    <h2>{{ thread.subject }}</h2>
+    {% if thread.locked %}<span class="badge">LOCKED</span>{% endif %}
+    {% if thread.pinned %}<span class="badge">PINNED</span>{% endif %}
+</div>
+
+{% for post in posts %}
+<div class="post{% if loop.first %} pinned{% endif %}">
+    <div class="post-header">
+        <span>{{ post.author_name }}</span>
+        <span class="meta">{{ post.created_at }}</span>
+    </div>
+    <div class="post-body">{{ post.body }}</div>
+</div>
+{% endfor %}
+
+{% if not thread.locked %}
+<div class="box">
+    <h2>Reply</h2>
+    <form method="post" action="/thread/{{ thread.id }}/reply">
+        <textarea name="body" placeholder="Your reply..." required></textarea>
+        <button type="submit">Post Reply</button>
+    </form>
+</div>
+{% endif %}
+
+{% else %}
+{# Viewing a board's thread list #}
+<div class="box">
+    <h2>{{ board.name }}</h2>
+    <p class="meta">{{ board.description }}</p>
+</div>
+
+{% if threads %}
+<table>
+    <tr>
+        <th>Subject</th>
+        <th>Author</th>
+        <th>Posts</th>
+        <th>Last Activity</th>
+    </tr>
+    {% for t in threads %}
+    <tr class="{% if t.pinned %}pinned{% endif %}">
+        <td>
+            <a href="/thread/{{ t.id }}">{{ t.subject }}</a>
+            {% if t.pinned %}<span class="badge">PIN</span>{% endif %}
+            {% if t.locked %}<span class="badge">LOCK</span>{% endif %}
+        </td>
+        <td>{{ t.author_name }}</td>
+        <td>{{ t.post_count }}</td>
+        <td class="meta">{{ t.last_post_at or t.created_at }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="meta">No threads yet. Start one below.</p>
+{% endif %}
+
+<div class="box" style="margin-top: 15px;">
+    <h2>New Thread</h2>
+    <form method="post" action="/boards/{{ board.id }}/thread">
+        <input type="text" name="subject" placeholder="Subject" required>
+        <textarea name="body" placeholder="Your message..." required></textarea>
+        <button type="submit">Create Thread</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

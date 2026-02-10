@@ -15,7 +15,10 @@
             <a href="/boards">Boards</a>
             <a href="/files">Files</a>
             <a href="/chat">Chat</a>
-            <span class="meta">[ {{ user.username }} ]</span>
+            {% if user.access_level >= 1 %}
+            <a href="/admin">Admin</a>
+            {% endif %}
+            <span class="meta">[ {{ user.username }}{% if user.access_level == 2 %} <span class="admin-badge">SUPER</span>{% elif user.access_level == 1 %} <span class="admin-badge">ADMIN</span>{% endif %} ]</span>
             <a href="/logout">Logout</a>
         </nav>
     </header>

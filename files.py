@@ -63,6 +63,19 @@ async def increment_download(file_id: int):
     await db.commit()
 
 
+async def delete_file(file_id: int):
+    db = await get_db()
+    cursor = await db.execute("SELECT path FROM files WHERE id = ?", (file_id,))
+    row = await cursor.fetchone()
+    if row:
+        try:
+            os.unlink(row["path"])
+        except FileNotFoundError:
+            pass
+        await db.execute("DELETE FROM files WHERE id = ?", (file_id,))
+        await db.commit()
+
+
 def save_upload(filename: str, data: bytes, area: str = "general") -> tuple[str, int]:
     area_dir = config.FILE_STORE / area
     area_dir.mkdir(parents=True, exist_ok=True)

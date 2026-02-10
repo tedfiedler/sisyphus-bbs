@@ -19,12 +19,16 @@ async def register_user(username: str, password: str, email: str = "") -> dict |
     db = await get_db()
     try:
         pw_hash = hash_password(password)
+        # First user becomes superadmin
+        count_cursor = await db.execute("SELECT COUNT(*) as cnt FROM users")
+        count_row = await count_cursor.fetchone()
+        access_level = 2 if count_row["cnt"] == 0 else 0
         cursor = await db.execute(
-            "INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)",
-            (username, pw_hash, email),
+            "INSERT INTO users (username, password_hash, email, access_level) VALUES (?, ?, ?, ?)",
+            (username, pw_hash, email, access_level),
         )
         await db.commit()
-        return {"id": cursor.lastrowid, "username": username}
+        return {"id": cursor.lastrowid, "username": username, "access_level": access_level}
     except Exception:
         return None
 
@@ -76,4 +80,45 @@ async def get_user_by_token(token: str) -> dict | None:
 async def delete_session(token: str):
     db = await get_db()
     await db.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    await db.commit()
+
+
+def is_admin(user: dict) -> bool:
+    return user.get("access_level", 0) >= 1
+
+
+def is_superadmin(user: dict) -> bool:
+    return user.get("access_level", 0) == 2
+
+
+async def list_users() -> list[dict]:
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id, username, email, access_level, created_at, last_login FROM users ORDER BY id"
+    )
+    return [dict(r) for r in await cursor.fetchall()]
+
+
+async def get_user(user_id: int) -> dict | None:
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id, username, email, access_level, created_at, last_login FROM users WHERE id = ?",
+        (user_id,),
+    )
+    row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def set_access_level(user_id: int, level: int):
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET access_level = ? WHERE id = ?", (level, user_id)
+    )
+    await db.commit()
+
+
+async def delete_user(user_id: int):
+    db = await get_db()
+    await db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+    await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
     await db.commit()

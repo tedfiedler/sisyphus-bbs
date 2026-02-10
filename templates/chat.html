@@ -5,10 +5,15 @@
     <h2>Chat - #lobby</h2>
     <div id="chat-messages">
         {% for msg in recent_messages %}
-        <div>
+        <div data-msg-id="{{ msg.id }}">
             <span class="msg-time">[{{ msg.created_at }}]</span>
             <span class="msg-user">&lt;{{ msg.username }}&gt;</span>
             {{ msg.message }}
+            {% if user.access_level >= 1 %}
+            <form method="post" action="/admin/chat/{{ msg.id }}/delete" style="display:inline; margin-left: 5px;">
+                <button type="submit" class="btn-danger btn-small">Del</button>
+            </form>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -41,10 +46,17 @@ ws.onclose = () => {
     appendSystem('Disconnected from chat.');
 };
 
+const isAdmin = {{ 'true' if user.access_level >= 1 else 'false' }};
+
 function appendMessage(data) {
     const div = document.createElement('div');
+    if (data.id) div.dataset.msgId = data.id;
     const time = data.timestamp ? data.timestamp.substring(11, 19) : '';
-    div.innerHTML = `<span class="msg-time">[${time || data.created_at || ''}]</span> <span class="msg-user">&lt;${data.username}&gt;</span> ${escapeHtml(data.message)}`;
+    let delBtn = '';
+    if (isAdmin && data.id) {
+        delBtn = ` <form method="post" action="/admin/chat/${data.id}/delete" style="display:inline; margin-left: 5px;"><button type="submit" class="btn-danger btn-small">Del</button></form>`;
+    }
+    div.innerHTML = `<span class="msg-time">[${time || data.created_at || ''}]</span> <span class="msg-user">&lt;${data.username}&gt;</span> ${escapeHtml(data.message)}${delBtn}`;
     msgDiv.appendChild(div);
     msgDiv.scrollTop = msgDiv.scrollHeight;
 }

@@ -122,6 +122,8 @@ class BBSSession:
         while True:
             self.write(ansi.CLEAR)
             self.write(ansi.load_ansi("menu"))
+            if auth.is_admin(self.user):
+                self.writeln(f"  {ansi.YELLOW}[A]{ansi.RESET}  Admin Panel")
             self.write(ansi.prompt("Command"))
             key = (await self.readkey()).upper()
             self.writeln(key)
@@ -136,6 +138,8 @@ class BBSSession:
                 await self.doors_menu()
             elif key == "W":
                 await self.who_online()
+            elif key == "A" and auth.is_admin(self.user):
+                await self.admin_menu()
             elif key == "Q":
                 self.writeln(ansi.success("\r\nThanks for visiting Sisyphus BBS!"))
                 return
@@ -218,14 +222,18 @@ class BBSSession:
         self.write(ansi.CLEAR)
         self.writeln(ansi.header(thread["subject"]))
         post_list = await boards.list_posts(thread["id"])
-        for p in post_list:
-            self.writeln(f"{ansi.CYAN}┌─ {ansi.WHITE}{p['author_name']}{ansi.RESET} {ansi.DIM}{p['created_at']}{ansi.RESET}")
+        for i, p in enumerate(post_list, 1):
+            post_label = f" #{i} (id:{p['id']})" if auth.is_admin(self.user) else ""
+            self.writeln(f"{ansi.CYAN}┌─ {ansi.WHITE}{p['author_name']}{ansi.RESET} {ansi.DIM}{p['created_at']}{post_label}{ansi.RESET}")
             for line in p["body"].split("\n"):
                 self.writeln(f"{ansi.CYAN}│{ansi.RESET} {line}")
             self.writeln(f"{ansi.CYAN}└{'─' * 40}{ansi.RESET}")
 
         if not thread.get("locked"):
-            self.writeln(f"\r\n  {ansi.DIM}[R]eply  [Q]uit{ansi.RESET}")
+            admin_opts = ""
+            if auth.is_admin(self.user):
+                admin_opts = f"  {ansi.RED}[D]elete thread  [X] Delete post{ansi.RESET}"
+            self.writeln(f"\r\n  {ansi.DIM}[R]eply  [Q]uit{ansi.RESET}{admin_opts}")
             self.write(ansi.prompt("Action"))
             key = (await self.readkey()).upper()
             self.writeln(key)
@@ -240,6 +248,21 @@ class BBSSession:
                 if body_lines:
                     await boards.create_post(thread["id"], self.user["id"], "\n".join(body_lines))
                     self.writeln(ansi.success("Reply posted!"))
+                    await asyncio.sleep(0.5)
+            elif key == "D" and auth.is_admin(self.user):
+                self.write(ansi.prompt("Delete this thread? [Y/N]"))
+                confirm = (await self.readkey()).upper()
+                self.writeln(confirm)
+                if confirm == "Y":
+                    await boards.delete_thread(thread["id"])
+                    self.writeln(ansi.success("Thread deleted."))
+                    await asyncio.sleep(0.5)
+            elif key == "X" and auth.is_admin(self.user):
+                self.write(ansi.prompt("Post ID to delete"))
+                pid = await self.readline()
+                if pid.strip().isdigit():
+                    await boards.delete_post(int(pid.strip()))
+                    self.writeln(ansi.success("Post deleted."))
                     await asyncio.sleep(0.5)
         else:
             await self.pause()
@@ -322,6 +345,69 @@ class BBSSession:
                     self.user["username"],
                 )
                 await self.pause()
+
+    async def admin_menu(self):
+        """Admin user management menu."""
+        while True:
+            self.write(ansi.CLEAR)
+            users = await auth.list_users()
+            lines = []
+            for u in users:
+                role = "USER"
+                if u["access_level"] == 1:
+                    role = "ADMIN"
+                elif u["access_level"] == 2:
+                    role = "SUPER"
+                lines.append(
+                    f"{ansi.YELLOW}{u['id']:>3}{ansi.RESET}. {u['username']:<20} {ansi.DIM}{role}{ansi.RESET}"
+                )
+            self.writeln(ansi.box("ADMIN - USER MANAGEMENT", lines))
+            opts = f"\r\n  {ansi.DIM}[P]romote user  "
+            if auth.is_superadmin(self.user):
+                opts += "[D]emote user  "
+            opts += f"[X] Delete user  [Q]uit{ansi.RESET}"
+            self.writeln(opts)
+            self.write(ansi.prompt("Admin"))
+            key = (await self.readkey()).upper()
+            self.writeln(key)
+
+            if key == "Q":
+                return
+            elif key == "P":
+                self.write(ansi.prompt("User ID to promote"))
+                uid = await self.readline()
+                if uid.strip().isdigit():
+                    target = await auth.get_user(int(uid.strip()))
+                    if target:
+                        await auth.set_access_level(target["id"], 1)
+                        self.writeln(ansi.success(f"{target['username']} promoted to admin."))
+                    else:
+                        self.writeln(ansi.error("User not found."))
+                    await asyncio.sleep(0.5)
+            elif key == "D" and auth.is_superadmin(self.user):
+                self.write(ansi.prompt("User ID to demote"))
+                uid = await self.readline()
+                if uid.strip().isdigit():
+                    target = await auth.get_user(int(uid.strip()))
+                    if target:
+                        await auth.set_access_level(target["id"], 0)
+                        self.writeln(ansi.success(f"{target['username']} demoted to regular user."))
+                    else:
+                        self.writeln(ansi.error("User not found."))
+                    await asyncio.sleep(0.5)
+            elif key == "X":
+                self.write(ansi.prompt("User ID to delete"))
+                uid = await self.readline()
+                if uid.strip().isdigit():
+                    target = await auth.get_user(int(uid.strip()))
+                    if target and target["access_level"] == 0:
+                        await auth.delete_user(target["id"])
+                        self.writeln(ansi.success(f"{target['username']} deleted."))
+                    elif target:
+                        self.writeln(ansi.error("Cannot delete admin users."))
+                    else:
+                        self.writeln(ansi.error("User not found."))
+                    await asyncio.sleep(0.5)
 
     async def who_online(self):
         """Show who's connected (simplified)."""

@@ -13,6 +13,11 @@
     <h2>{{ thread.subject }}</h2>
     {% if thread.locked %}<span class="badge">LOCKED</span>{% endif %}
     {% if thread.pinned %}<span class="badge">PINNED</span>{% endif %}
+    {% if user.access_level >= 1 %}
+    <form method="post" action="/admin/thread/{{ thread.id }}/delete" style="display:inline; margin-left: 10px;">
+        <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete this entire thread?')">Delete Thread</button>
+    </form>
+    {% endif %}
 </div>
 
 {% for post in posts %}
@@ -20,6 +25,11 @@
     <div class="post-header">
         <span>{{ post.author_name }}</span>
         <span class="meta">{{ post.created_at }}</span>
+        {% if user.access_level >= 1 %}
+        <form method="post" action="/admin/post/{{ post.id }}/delete" style="display:inline;">
+            <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete this post?')">Del</button>
+        </form>
+        {% endif %}
     </div>
     <div class="post-body">{{ post.body }}</div>
 </div>

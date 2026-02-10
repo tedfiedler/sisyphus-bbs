@@ -21,8 +21,9 @@ class ChatManager:
                 pass
 
     async def broadcast(self, channel: str, username: str, message: str):
-        await self._store_message(channel, username, message)
+        msg_id = await self._store_message(channel, username, message)
         payload = {
+            "id": msg_id,
             "username": username,
             "message": message,
             "channel": channel,
@@ -31,18 +32,20 @@ class ChatManager:
         for q in self._subscribers.get(channel, []):
             await q.put(payload)
 
-    async def _store_message(self, channel: str, username: str, message: str):
+    async def _store_message(self, channel: str, username: str, message: str) -> int | None:
         db = await get_db()
         cursor = await db.execute(
             "SELECT id FROM users WHERE username = ?", (username,)
         )
         row = await cursor.fetchone()
         if row:
-            await db.execute(
+            insert_cursor = await db.execute(
                 "INSERT INTO chat_messages (user_id, channel, message) VALUES (?, ?, ?)",
                 (row["id"], channel, message),
             )
             await db.commit()
+            return insert_cursor.lastrowid
+        return None
 
     async def recent_messages(self, channel: str = "lobby", limit: int = 50) -> list[dict]:
         db = await get_db()
@@ -56,6 +59,12 @@ class ChatManager:
         rows = [dict(r) for r in await cursor.fetchall()]
         rows.reverse()
         return rows
+
+
+async def delete_message(message_id: int):
+    db = await get_db()
+    await db.execute("DELETE FROM chat_messages WHERE id = ?", (message_id,))
+    await db.commit()
 
 
 chat_manager = ChatManager()

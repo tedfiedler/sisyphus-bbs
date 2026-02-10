@@ -29,7 +29,14 @@
             <td>{{ f.uploader_name }}</td>
             <td>{{ f.download_count }}</td>
             <td class="meta">{{ f.uploaded_at }}</td>
-            <td><a href="/files/download/{{ f.id }}">DL</a></td>
+            <td>
+                <a href="/files/download/{{ f.id }}">DL</a>
+                {% if user.access_level >= 1 %}
+                <form method="post" action="/admin/file/{{ f.id }}/delete" style="display:inline; margin-left: 5px;">
+                    <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete this file?')">Del</button>
+                </form>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </table>

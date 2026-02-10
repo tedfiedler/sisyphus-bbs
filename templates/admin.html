@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<div class="box">
+    <h2>User Management</h2>
+    {% if users %}
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Created</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+        </tr>
+        {% for u in users %}
+        <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td>{{ u.email or '-' }}</td>
+            <td>
+                {% if u.access_level == 2 %}
+                <span class="admin-badge">SUPER</span>
+                {% elif u.access_level == 1 %}
+                <span class="admin-badge">ADMIN</span>
+                {% else %}
+                USER
+                {% endif %}
+            </td>
+            <td class="meta">{{ u.created_at }}</td>
+            <td class="meta">{{ u.last_login or 'Never' }}</td>
+            <td>
+                {% if u.id != user.id %}
+                    {% if u.access_level == 0 %}
+                    <form method="post" action="/admin/users/{{ u.id }}/promote" style="display:inline;">
+                        <button type="submit" class="btn-small">Promote</button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline;">
+                        <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete user {{ u.username }}?')">Delete</button>
+                    </form>
+                    {% elif u.access_level == 1 and user.access_level == 2 %}
+                    <form method="post" action="/admin/users/{{ u.id }}/demote" style="display:inline;">
+                        <button type="submit" class="btn-small" onclick="return confirm('Demote {{ u.username }}?')">Demote</button>
+                    </form>
+                    {% endif %}
+                {% else %}
+                <span class="meta">(you)</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="meta">No users found.</p>
+    {% endif %}
+</div>
+{% endblock %}

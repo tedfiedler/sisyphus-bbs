@@ -88,3 +88,16 @@ async def create_post(thread_id: int, author_id: int, body: str) -> int:
     )
     await db.commit()
     return cursor.lastrowid
+
+
+async def delete_post(post_id: int):
+    db = await get_db()
+    await db.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+    await db.commit()
+
+
+async def delete_thread(thread_id: int):
+    db = await get_db()
+    await db.execute("DELETE FROM posts WHERE thread_id = ?", (thread_id,))
+    await db.execute("DELETE FROM threads WHERE id = ?", (thread_id,))
+    await db.commit()

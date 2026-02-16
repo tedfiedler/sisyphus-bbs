@@ -226,10 +226,10 @@ class BBSSession:
         post_list = await boards.list_posts(thread["id"])
         for i, p in enumerate(post_list, 1):
             post_label = f" #{i} (id:{p['id']})" if auth.is_admin(self.user) else ""
-            self.writeln(f"{ansi.CYAN}\u250c\u2500 {ansi.WHITE}{p['author_name']}{ansi.RESET} {ansi.DIM}{p['created_at']}{post_label}{ansi.RESET}")
+            self.writeln(f"  {ansi.WHITE}{p['author_name']}{ansi.RESET} {ansi.DIM}{p['created_at']}{post_label}{ansi.RESET}")
             for line in p["body"].split("\n"):
-                self.writeln(f"{ansi.CYAN}\u2502{ansi.RESET} {line}")
-            self.writeln(f"{ansi.CYAN}\u2514{'\u2500' * 40}{ansi.RESET}")
+                self.writeln(f"    {line}")
+            self.writeln(f"{ansi.CYAN}{'-' * 52}{ansi.RESET}")
 
         if not thread.get("locked"):
             admin_opts = ""

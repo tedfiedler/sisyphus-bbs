@@ -27,24 +27,19 @@ def load_ansi(name: str) -> str:
     return ""
 
 
-def box(title: str, lines: list[str], width: int = 60) -> str:
-    """Draw a bordered box around content."""
-    inner = width - 2  # chars between the two │ borders
-    out = [f"{CYAN}\u250c{'\u2500' * inner}\u2510{RESET}"]
-    padded_title = f" {title} "
-    left = (inner - len(padded_title)) // 2
-    right = inner - left - len(padded_title)
-    out.append(f"{CYAN}\u2502{'\u2500' * left}{WHITE}{padded_title}{CYAN}{'\u2500' * right}\u2502{RESET}")
-    out.append(f"{CYAN}\u251c{'\u2500' * inner}\u2524{RESET}")
+def panel(title: str, lines: list[str], width: int = 52) -> str:
+    """Draw a panel with = header and - separator, Mille Bornes style."""
+    out = [f"{CYAN}{'=' * width}{RESET}"]
+    out.append(f"  {WHITE}{BOLD}{title}{RESET}")
+    out.append(f"{CYAN}{'=' * width}{RESET}")
     for line in lines:
-        visible_len = len(strip_ansi(line))
-        # 1 leading space + content + trailing pad = inner chars
-        pad = inner - 1 - visible_len
-        if pad < 0:
-            pad = 0
-        out.append(f"{CYAN}\u2502{RESET} {line}{' ' * pad}{CYAN}\u2502{RESET}")
-    out.append(f"{CYAN}\u2514{'\u2500' * inner}\u2518{RESET}")
+        out.append(f"  {line}")
+    out.append(f"{CYAN}{'-' * width}{RESET}")
     return "\r\n".join(out)
+
+
+# Keep box() as alias for backwards compatibility
+box = panel
 
 
 def strip_ansi(text: str) -> str:

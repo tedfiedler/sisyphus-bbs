@@ -122,3 +122,16 @@ async def delete_user(user_id: int):
     await db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
     await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
     await db.commit()
+
+
+async def list_online_users() -> list[dict]:
+    """Return users with non-expired sessions (excluding duplicates)."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT DISTINCT u.id, u.username
+           FROM sessions s JOIN users u ON s.user_id = u.id
+           WHERE s.expires_at > ?
+           ORDER BY u.username""",
+        (datetime.now(timezone.utc).isoformat(),),
+    )
+    return [dict(r) for r in await cursor.fetchall()]

@@ -2,52 +2,206 @@
 {% block title %}Mille Bornes{% endblock %}
 {% block content %}
 
-{% if state == "no_game" %}
-{# ── Welcome / Start Screen ── #}
-<div class="box">
-    <h2>Mille Bornes</h2>
-    <p>The classic 1000-mile card race.</p>
-    <p class="meta" style="margin-top:8px">
-        Race to 1000 miles against the computer.<br>
-        Play distance cards to advance, hazards to slow your opponent, and safeties for protection.<br>
-        You must play <strong>Roll</strong> before you can drive. Max two <strong>200 mi</strong> cards per game.<br>
-        Speed Limit restricts you to 25 or 50 mi cards.
-    </p>
-    <form method="post" action="/mille/new" style="margin-top:12px">
-        <button type="submit">Deal Cards</button>
-    </form>
-</div>
+{# ── Macros ── #}
 
-{% elif state == "coup_fourre" %}
-{# ── Coup Fourré Decision ── #}
+{% macro player_status_table(p1, p1_name, p2, p2_name, deck_size) %}
 <div class="box">
-    <h2>Mille Bornes <span class="meta">Deck: {{ game.deck|length }}</span></h2>
+    <h2>Mille Bornes <span class="meta">Deck: {{ deck_size }}</span></h2>
     <table>
         <tr><th>Player</th><th>Miles</th><th>Status</th><th>Speed</th><th>Safeties</th></tr>
         <tr>
-            <td>You</td>
-            <td>{{ game.human.miles }}</td>
-            <td>{% if game.human.hazard %}<span style="color:var(--warn)">{{ game.human.hazard }}</span>{% elif game.human.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
-            <td>{% if game.human.speed_limited and "Right of Way" not in game.human.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
-            <td style="color:var(--accent)">{{ game.human.safeties|join(", ") }}</td>
+            <td>{{ p1_name }}</td>
+            <td>{{ p1.miles }}</td>
+            <td>{% if p1.hazard %}<span style="color:var(--warn)">{{ p1.hazard }}</span>{% elif p1.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
+            <td>{% if p1.speed_limited and "Right of Way" not in p1.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
+            <td style="color:var(--accent)">{{ p1.safeties|join(", ") }}</td>
         </tr>
         <tr>
-            <td>CPU</td>
-            <td>{{ game.cpu.miles }}</td>
-            <td>{% if game.cpu.hazard %}<span style="color:var(--warn)">{{ game.cpu.hazard }}</span>{% elif game.cpu.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
-            <td>{% if game.cpu.speed_limited and "Right of Way" not in game.cpu.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
-            <td style="color:var(--accent)">{{ game.cpu.safeties|join(", ") }}</td>
+            <td>{{ p2_name }}</td>
+            <td>{{ p2.miles }}</td>
+            <td>{% if p2.hazard %}<span style="color:var(--warn)">{{ p2.hazard }}</span>{% elif p2.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
+            <td>{% if p2.speed_limited and "Right of Way" not in p2.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
+            <td style="color:var(--accent)">{{ p2.safeties|join(", ") }}</td>
         </tr>
     </table>
 </div>
+{% endmacro %}
 
-{% if game.messages %}
+{% macro message_box(messages) %}
+{% if messages %}
 <div class="box">
-    {% for msg in game.messages[-3:] %}
+    {% for msg in messages[-3:] %}
     <p>{{ msg }}</p>
     {% endfor %}
 </div>
 {% endif %}
+{% endmacro %}
+
+{% macro hand_display(hand, playable, play_action, discard_action) %}
+<div class="box">
+    <h2>Your Hand</h2>
+    {% if hand %}
+    <table>
+        <tr><th>#</th><th>Card</th><th></th><th></th></tr>
+        {% for card in hand %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>
+                {% if card[0] == "distance" %}<span style="color:#fff;font-weight:bold">{{ card[1] }} mi</span>
+                {% elif card[0] == "hazard" %}<span style="color:var(--warn)">{{ card[1] }}</span>
+                {% elif card[0] == "remedy" %}<span style="color:var(--fg)">{{ card[1] }}</span>
+                {% elif card[0] == "safety" %}<span style="color:var(--accent);font-weight:bold">{{ card[1] }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if playable[loop.index0] %}
+                <form method="post" action="{{ play_action }}" style="display:inline">
+                    <input type="hidden" name="card_index" value="{{ loop.index0 }}">
+                    <button type="submit" class="btn-small">Play</button>
+                </form>
+                {% else %}
+                <span class="meta">---</span>
+                {% endif %}
+            </td>
+            <td>
+                <form method="post" action="{{ discard_action }}" style="display:inline">
+                    <input type="hidden" name="card_index" value="{{ loop.index0 }}">
+                    <button type="submit" class="btn-small" style="background:var(--border);color:var(--fg)">Discard</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="meta">No cards in hand.</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro scoring_table(p1, p1_name, p2, p2_name, p1_score, p2_score, winner) %}
+<div class="box">
+    <h2>Scoring</h2>
+    <table>
+        <tr><th>Category</th><th>{{ p1_name }}</th><th>{{ p2_name }}</th></tr>
+        <tr><td>Miles</td><td>{{ p1.miles }}</td><td>{{ p2.miles }}</td></tr>
+        {% if p1.safeties or p2.safeties %}
+        <tr><td>Safeties (x100)</td><td>{{ p1.safeties|length * 100 }}</td><td>{{ p2.safeties|length * 100 }}</td></tr>
+        {% endif %}
+        {% if p1.safeties|length == 4 or p2.safeties|length == 4 %}
+        <tr><td>All 4 safeties</td><td>{{ 700 if p1.safeties|length == 4 else 0 }}</td><td>{{ 700 if p2.safeties|length == 4 else 0 }}</td></tr>
+        {% endif %}
+        {% if p1.coups or p2.coups %}
+        <tr><td>Coup Fourr&eacute; (x300)</td><td>{{ p1.coups * 300 }}</td><td>{{ p2.coups * 300 }}</td></tr>
+        {% endif %}
+        {% if winner == p1.name and p1.miles == 1000 %}
+        <tr><td>Trip complete</td><td>400</td><td>0</td></tr>
+        {% if p1.count_200 == 0 %}<tr><td>Safe trip</td><td>300</td><td>0</td></tr>{% endif %}
+        {% if p2.miles == 0 %}<tr><td>Shutout</td><td>500</td><td>0</td></tr>{% endif %}
+        {% elif winner == p2.name and p2.miles == 1000 %}
+        <tr><td>Trip complete</td><td>0</td><td>400</td></tr>
+        {% if p2.count_200 == 0 %}<tr><td>Safe trip</td><td>0</td><td>300</td></tr>{% endif %}
+        {% if p1.miles == 0 %}<tr><td>Shutout</td><td>0</td><td>500</td></tr>{% endif %}
+        {% endif %}
+        <tr style="border-top:2px solid var(--accent)"><td><strong>Total</strong></td><td><strong>{{ p1_score }}</strong></td><td><strong>{{ p2_score }}</strong></td></tr>
+    </table>
+
+    <p style="margin-top:12px;font-size:16px">
+        {% if p1_score > p2_score %}
+        <strong style="color:var(--fg)">{{ p1_name }} wins!</strong>
+        {% elif p2_score > p1_score %}
+        <strong style="color:var(--warn)">{{ p2_name }} wins!</strong>
+        {% else %}
+        <strong style="color:var(--accent)">It's a tie!</strong>
+        {% endif %}
+    </p>
+</div>
+{% endmacro %}
+
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# STATES                                                                    #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+
+{% if state == "lobby" %}
+{# ── Lobby ── #}
+<div class="box">
+    <h2>Mille Bornes &mdash; Game Lobby</h2>
+    <p class="meta" style="margin-top:8px">
+        Race to 1000 miles! Play distance cards to advance, hazards to slow your opponent, and safeties for protection.<br>
+        You must play <strong>Roll</strong> before you can drive. Max two <strong>200 mi</strong> cards per game.
+    </p>
+    <form method="post" action="/mille/new" style="margin-top:12px">
+        <button type="submit">Play vs CPU</button>
+    </form>
+</div>
+
+{% if flash %}
+<div class="box" style="border-color:var(--warn)">
+    <p style="color:var(--warn)">{{ flash }}</p>
+</div>
+{% endif %}
+
+{% if incoming_invite %}
+<div class="box" style="border-color:var(--accent)">
+    <h2>Incoming Challenge</h2>
+    <p><strong style="color:var(--accent)">{{ incoming_invite.from_username }}</strong> wants to play!</p>
+    <div style="display:flex;gap:8px;margin-top:10px">
+        <form method="post" action="/mille/invite/accept">
+            <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
+            <button type="submit">Accept</button>
+        </form>
+        <form method="post" action="/mille/invite/decline">
+            <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
+            <button type="submit" style="background:var(--border);color:var(--fg)">Decline</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if online_users %}
+<div class="box">
+    <h2>Online Players</h2>
+    <table>
+        <tr><th>Username</th><th></th></tr>
+        {% for u in online_users %}
+        <tr>
+            <td>{{ u.username }}</td>
+            <td>
+                <form method="post" action="/mille/invite" style="display:inline">
+                    <input type="hidden" name="to_user_id" value="{{ u.id }}">
+                    <button type="submit" class="btn-small">Challenge</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+
+{% elif state == "waiting_invite" %}
+{# ── Waiting for invite response ── #}
+<meta http-equiv="refresh" content="3">
+<div class="box">
+    <h2>Mille Bornes &mdash; Challenge Sent</h2>
+    <p>Waiting for <strong style="color:var(--accent)">{{ invite.to_username }}</strong> to accept your challenge...</p>
+    <p class="meta">Expires in {{ remaining }}s</p>
+    <form method="post" action="/mille/invite/cancel" style="margin-top:10px">
+        <button type="submit" style="background:var(--border);color:var(--fg)">Cancel</button>
+    </form>
+</div>
+
+{% if flash %}
+<div class="box" style="border-color:var(--warn)">
+    <p style="color:var(--warn)">{{ flash }}</p>
+</div>
+{% endif %}
+
+
+{% elif state == "coup_fourre" %}
+{# ── CPU Coup Fourre Decision ── #}
+{{ player_status_table(game.human, "You", game.cpu, "CPU", game.deck|length) }}
+{{ message_box(game.messages) }}
 
 <div class="box" style="border-color:var(--accent)">
     <h2>Coup Fourr&eacute;!</h2>
@@ -64,78 +218,16 @@
     </div>
 </div>
 
+
 {% elif state == "active" %}
-{# ── Active Game ── #}
-<div class="box">
-    <h2>Mille Bornes <span class="meta">Deck: {{ game.deck|length }}</span></h2>
-    <table>
-        <tr><th>Player</th><th>Miles</th><th>Status</th><th>Speed</th><th>Safeties</th></tr>
-        <tr>
-            <td>You</td>
-            <td>{{ game.human.miles }}</td>
-            <td>{% if game.human.hazard %}<span style="color:var(--warn)">{{ game.human.hazard }}</span>{% elif game.human.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
-            <td>{% if game.human.speed_limited and "Right of Way" not in game.human.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
-            <td style="color:var(--accent)">{{ game.human.safeties|join(", ") }}</td>
-        </tr>
-        <tr>
-            <td>CPU</td>
-            <td>{{ game.cpu.miles }}</td>
-            <td>{% if game.cpu.hazard %}<span style="color:var(--warn)">{{ game.cpu.hazard }}</span>{% elif game.cpu.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
-            <td>{% if game.cpu.speed_limited and "Right of Way" not in game.cpu.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
-            <td style="color:var(--accent)">{{ game.cpu.safeties|join(", ") }}</td>
-        </tr>
-    </table>
-</div>
+{# ── CPU Active Game ── #}
+{{ player_status_table(game.human, "You", game.cpu, "CPU", game.deck|length) }}
+{{ message_box(game.messages) }}
+{{ hand_display(game.human.hand, playable, "/mille/play", "/mille/discard") }}
 
-{% if game.messages %}
-<div class="box">
-    {% for msg in game.messages[-3:] %}
-    <p>{{ msg }}</p>
-    {% endfor %}
-</div>
-{% endif %}
-
-<div class="box">
-    <h2>Your Hand</h2>
-    {% if game.human.hand %}
-    <table>
-        <tr><th>#</th><th>Card</th><th></th><th></th></tr>
-        {% for card in game.human.hand %}
-        <tr>
-            <td>{{ loop.index }}</td>
-            <td>
-                {% if card[0] == "distance" %}<span style="color:#fff;font-weight:bold">{{ card[1] }} mi</span>
-                {% elif card[0] == "hazard" %}<span style="color:var(--warn)">{{ card[1] }}</span>
-                {% elif card[0] == "remedy" %}<span style="color:var(--fg)">{{ card[1] }}</span>
-                {% elif card[0] == "safety" %}<span style="color:var(--accent);font-weight:bold">{{ card[1] }}</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if playable[loop.index0] %}
-                <form method="post" action="/mille/play" style="display:inline">
-                    <input type="hidden" name="card_index" value="{{ loop.index0 }}">
-                    <button type="submit" class="btn-small">Play</button>
-                </form>
-                {% else %}
-                <span class="meta">---</span>
-                {% endif %}
-            </td>
-            <td>
-                <form method="post" action="/mille/discard" style="display:inline">
-                    <input type="hidden" name="card_index" value="{{ loop.index0 }}">
-                    <button type="submit" class="btn-small" style="background:var(--border);color:var(--fg)">Discard</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% else %}
-    <p class="meta">No cards in hand.</p>
-    {% endif %}
-</div>
 
 {% elif state == "game_over" %}
-{# ── Game Over ── #}
+{# ── CPU Game Over ── #}
 <div class="box">
     <h2>Mille Bornes &mdash; Game Over</h2>
     <table>
@@ -153,52 +245,92 @@
     </table>
 </div>
 
-{% if game.messages %}
-<div class="box">
-    {% for msg in game.messages[-3:] %}
-    <p>{{ msg }}</p>
-    {% endfor %}
-</div>
-{% endif %}
+{{ message_box(game.messages) }}
+{{ scoring_table(game.human, "You", game.cpu, "CPU", human_score, cpu_score, game.winner) }}
 
 <div class="box">
-    <h2>Scoring</h2>
-    <table>
-        <tr><th>Category</th><th>You</th><th>CPU</th></tr>
-        <tr><td>Miles</td><td>{{ game.human.miles }}</td><td>{{ game.cpu.miles }}</td></tr>
-        {% if game.human.safeties or game.cpu.safeties %}
-        <tr><td>Safeties (x100)</td><td>{{ game.human.safeties|length * 100 }}</td><td>{{ game.cpu.safeties|length * 100 }}</td></tr>
-        {% endif %}
-        {% if game.human.safeties|length == 4 or game.cpu.safeties|length == 4 %}
-        <tr><td>All 4 safeties</td><td>{{ 700 if game.human.safeties|length == 4 else 0 }}</td><td>{{ 700 if game.cpu.safeties|length == 4 else 0 }}</td></tr>
-        {% endif %}
-        {% if game.human.coups or game.cpu.coups %}
-        <tr><td>Coup Fourr&eacute; (x300)</td><td>{{ game.human.coups * 300 }}</td><td>{{ game.cpu.coups * 300 }}</td></tr>
-        {% endif %}
-        {% if game.winner == game.human.name and game.human.miles == 1000 %}
-        <tr><td>Trip complete</td><td>400</td><td>0</td></tr>
-        {% if game.human.count_200 == 0 %}<tr><td>Safe trip</td><td>300</td><td>0</td></tr>{% endif %}
-        {% if game.cpu.miles == 0 %}<tr><td>Shutout</td><td>500</td><td>0</td></tr>{% endif %}
-        {% elif game.winner == game.cpu.name and game.cpu.miles == 1000 %}
-        <tr><td>Trip complete</td><td>0</td><td>400</td></tr>
-        {% if game.cpu.count_200 == 0 %}<tr><td>Safe trip</td><td>0</td><td>300</td></tr>{% endif %}
-        {% if game.human.miles == 0 %}<tr><td>Shutout</td><td>0</td><td>500</td></tr>{% endif %}
-        {% endif %}
-        <tr style="border-top:2px solid var(--accent)"><td><strong>Total</strong></td><td><strong>{{ human_score }}</strong></td><td><strong>{{ cpu_score }}</strong></td></tr>
-    </table>
-
-    <p style="margin-top:12px;font-size:16px">
-        {% if human_score > cpu_score %}
-        <strong style="color:var(--fg)">You win!</strong>
-        {% elif cpu_score > human_score %}
-        <strong style="color:var(--warn)">CPU wins!</strong>
-        {% else %}
-        <strong style="color:var(--accent)">It's a tie!</strong>
-        {% endif %}
-    </p>
-
-    <form method="post" action="/mille/new" style="margin-top:10px">
+    <form method="post" action="/mille/new" style="margin-top:0">
         <button type="submit">Play Again</button>
+    </form>
+</div>
+
+
+{% elif state == "pvp_active" %}
+{# ── PvP: Your Turn ── #}
+{{ player_status_table(me, "You", opp, opp.name, game.deck|length) }}
+{{ message_box(game.messages) }}
+{{ hand_display(me.hand, playable, "/mille/pvp/play", "/mille/pvp/discard") }}
+
+<div class="box">
+    <form method="post" action="/mille/pvp/quit">
+        <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
+    </form>
+</div>
+
+
+{% elif state == "pvp_waiting" %}
+{# ── PvP: Opponent's Turn ── #}
+<meta http-equiv="refresh" content="3">
+{{ player_status_table(me, "You", opp, opp.name, game.deck|length) }}
+{{ message_box(game.messages) }}
+
+<div class="box">
+    <p>Waiting for <strong style="color:var(--accent)">{{ opp.name }}</strong> to play...</p>
+</div>
+
+<div class="box">
+    <form method="post" action="/mille/pvp/quit">
+        <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
+    </form>
+</div>
+
+
+{% elif state == "pvp_coup_fourre" %}
+{# ── PvP: Coup Fourre Decision ── #}
+{{ player_status_table(me, "You", opp, opp.name, game.deck|length) }}
+{{ message_box(game.messages) }}
+
+<div class="box" style="border-color:var(--accent)">
+    <h2>Coup Fourr&eacute;!</h2>
+    <p><strong>{{ opp.name }}</strong> played a hazard, but you have <strong style="color:var(--accent)">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
+    <div style="display:flex;gap:8px;margin-top:10px">
+        <form method="post" action="/mille/pvp/coup">
+            <input type="hidden" name="accept" value="yes">
+            <button type="submit">Yes &mdash; Play it!</button>
+        </form>
+        <form method="post" action="/mille/pvp/coup">
+            <input type="hidden" name="accept" value="no">
+            <button type="submit" style="background:var(--border);color:var(--fg)">No &mdash; Decline</button>
+        </form>
+    </div>
+</div>
+
+
+{% elif state == "pvp_game_over" %}
+{# ── PvP: Game Over ── #}
+<div class="box">
+    <h2>Mille Bornes &mdash; Game Over</h2>
+    <table>
+        <tr><th>Player</th><th>Miles</th><th>Safeties</th></tr>
+        <tr>
+            <td>You</td>
+            <td>{{ me.miles }}</td>
+            <td style="color:var(--accent)">{{ me.safeties|join(", ") }}</td>
+        </tr>
+        <tr>
+            <td>{{ opp.name }}</td>
+            <td>{{ opp.miles }}</td>
+            <td style="color:var(--accent)">{{ opp.safeties|join(", ") }}</td>
+        </tr>
+    </table>
+</div>
+
+{{ message_box(game.messages) }}
+{{ scoring_table(me, "You", opp, opp.name, my_score, opp_score, game.winner) }}
+
+<div class="box">
+    <form method="post" action="/mille/pvp/quit">
+        <button type="submit">Back to Lobby</button>
     </form>
 </div>
 

@@ -1,6 +1,8 @@
 """Mille Bornes — shared game logic for terminal and web interfaces."""
 
 import random
+import time
+import uuid
 from dataclasses import dataclass, field
 
 # Hazard -> Remedy
@@ -293,3 +295,132 @@ def get_game(user_id: int) -> GameState | None:
 
 def remove_game(user_id: int) -> None:
     _games.pop(user_id, None)
+
+
+# ---------------------------------------------------------------------------
+# Invite system
+# ---------------------------------------------------------------------------
+
+INVITE_TIMEOUT = 60  # seconds
+
+@dataclass
+class GameInvite:
+    from_user_id: int
+    from_username: str
+    to_user_id: int
+    to_username: str
+    created_at: float  # time.time()
+
+
+_invites: dict[int, GameInvite] = {}  # keyed by from_user_id
+_flash: dict[int, str] = {}           # keyed by user_id, one-shot messages
+
+
+def create_invite(from_id: int, from_name: str, to_id: int, to_name: str) -> GameInvite:
+    inv = GameInvite(from_user_id=from_id, from_username=from_name,
+                     to_user_id=to_id, to_username=to_name,
+                     created_at=time.time())
+    _invites[from_id] = inv
+    return inv
+
+
+def get_invite_from(user_id: int) -> GameInvite | None:
+    """Get outgoing invite sent by user_id."""
+    return _invites.get(user_id)
+
+
+def get_invite_to(user_id: int) -> GameInvite | None:
+    """Get first incoming invite addressed to user_id."""
+    for inv in _invites.values():
+        if inv.to_user_id == user_id:
+            return inv
+    return None
+
+
+def cancel_invite(from_id: int) -> None:
+    _invites.pop(from_id, None)
+
+
+def set_flash(user_id: int, message: str) -> None:
+    _flash[user_id] = message
+
+
+def pop_flash(user_id: int) -> str | None:
+    return _flash.pop(user_id, None)
+
+
+def expire_invites() -> None:
+    """Remove invites older than INVITE_TIMEOUT seconds, flash the sender."""
+    now = time.time()
+    expired = [fid for fid, inv in _invites.items()
+               if now - inv.created_at > INVITE_TIMEOUT]
+    for fid in expired:
+        inv = _invites.pop(fid)
+        _flash[inv.from_user_id] = f"{inv.to_username} did not respond to your challenge."
+
+
+# ---------------------------------------------------------------------------
+# PvP game state
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PvpGameState:
+    game_id: str
+    deck: list
+    player1: Player
+    player2: Player
+    player1_id: int
+    player2_id: int
+    current_turn: int  # user_id of active player
+    messages: list = field(default_factory=list)
+    winner: str | None = None
+    coup_fourre_pending: int | None = None    # user_id who can respond
+    coup_fourre_hazard: str | None = None     # hazard name
+
+
+_pvp_games: dict[str, PvpGameState] = {}  # game_id -> state
+_user_pvp: dict[int, str] = {}            # user_id -> game_id
+
+
+def new_pvp_game(p1_id: int, p1_name: str, p2_id: int, p2_name: str) -> PvpGameState:
+    """Create a new PvP game. Player 1 goes first (pre-draws)."""
+    deck = build_deck()
+    player1 = Player(p1_name)
+    player2 = Player(p2_name)
+    for _ in range(6):
+        player1.hand.append(deck.pop())
+        player2.hand.append(deck.pop())
+    # Pre-draw for player1's first turn
+    player1.hand.append(deck.pop())
+    gid = uuid.uuid4().hex[:12]
+    game = PvpGameState(
+        game_id=gid, deck=deck,
+        player1=player1, player2=player2,
+        player1_id=p1_id, player2_id=p2_id,
+        current_turn=p1_id,
+    )
+    _pvp_games[gid] = game
+    _user_pvp[p1_id] = gid
+    _user_pvp[p2_id] = gid
+    return game
+
+
+def get_pvp_game(user_id: int) -> PvpGameState | None:
+    gid = _user_pvp.get(user_id)
+    if gid is None:
+        return None
+    return _pvp_games.get(gid)
+
+
+def remove_pvp_game(game_id: str) -> None:
+    game = _pvp_games.pop(game_id, None)
+    if game:
+        _user_pvp.pop(game.player1_id, None)
+        _user_pvp.pop(game.player2_id, None)
+
+
+def get_me_and_opponent(game: PvpGameState, user_id: int) -> tuple[Player, Player, int, int]:
+    """Return (my_player, their_player, my_id, their_id)."""
+    if user_id == game.player1_id:
+        return game.player1, game.player2, game.player1_id, game.player2_id
+    return game.player2, game.player1, game.player2_id, game.player1_id

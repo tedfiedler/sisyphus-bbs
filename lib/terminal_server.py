@@ -92,8 +92,7 @@ class BBSSession:
         for _ in range(3):
             self.writeln(f"{ansi.CYAN}[L]{ansi.RESET} Login  {ansi.CYAN}[R]{ansi.RESET} Register  {ansi.CYAN}[Q]{ansi.RESET} Quit")
             self.write(ansi.prompt("Choice"))
-            choice = (await self.readkey()).upper()
-            self.writeln(choice)
+            choice = (await self.readline()).strip().upper()[:1]
 
             if choice == "Q":
                 return False
@@ -129,8 +128,7 @@ class BBSSession:
             if auth.is_admin(self.user):
                 self.writeln(f"  {ansi.YELLOW}[A]{ansi.RESET}  Admin Panel")
             self.write(ansi.prompt("Command"))
-            key = (await self.readkey()).upper()
-            self.writeln(key)
+            key = (await self.readline()).strip().upper()[:1]
 
             if key == "B":
                 await self.boards_menu()
@@ -239,8 +237,7 @@ class BBSSession:
                 admin_opts = f"  {ansi.RED}[D]elete thread  [X] Delete post{ansi.RESET}"
             self.writeln(f"\r\n  {ansi.DIM}[R]eply  [Q]uit{ansi.RESET}{admin_opts}")
             self.write(ansi.prompt("Action"))
-            key = (await self.readkey()).upper()
-            self.writeln(key)
+            key = (await self.readline()).strip().upper()[:1]
             if key == "R":
                 self.writeln("Enter reply (blank line to end):")
                 body_lines = []
@@ -255,8 +252,7 @@ class BBSSession:
                     await asyncio.sleep(0.5)
             elif key == "D" and auth.is_admin(self.user):
                 self.write(ansi.prompt("Delete this thread? [Y/N]"))
-                confirm = (await self.readkey()).upper()
-                self.writeln(confirm)
+                confirm = (await self.readline()).strip().upper()[:1]
                 if confirm == "Y":
                     await boards.delete_thread(thread["id"])
                     self.writeln(ansi.success("Thread deleted."))
@@ -376,8 +372,7 @@ class BBSSession:
             opts += f"[X] Delete user  [Q]uit{ansi.RESET}"
             self.writeln(opts)
             self.write(ansi.prompt("Admin"))
-            key = (await self.readkey()).upper()
-            self.writeln(key)
+            key = (await self.readline()).strip().upper()[:1]
 
             if key == "Q":
                 return

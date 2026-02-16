@@ -432,15 +432,8 @@ class BBSServer(asyncssh.SSHServer):
         self._conn = conn
 
     def begin_auth(self, username):
-        # Allow all connections through to the BBS login screen
+        # Skip SSH-level auth — the BBS login screen handles it
         return False
-
-    def password_auth_supported(self):
-        return True
-
-    async def validate_password(self, username, password):
-        # Accept any password - real auth happens in the BBS
-        return True
 
 
 async def handle_client(process: asyncssh.SSHServerProcess):

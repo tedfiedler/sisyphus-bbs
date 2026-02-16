@@ -59,7 +59,8 @@ class BBSSession:
                     if echo:
                         self.write(ch)
                     else:
-                        self.write("*")
+                        # Overwrite client's local echo with *
+                        self.write("\x08*")
 
     async def readkey(self) -> str:
         """Read a single keypress."""

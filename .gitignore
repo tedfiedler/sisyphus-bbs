@@ -8,3 +8,4 @@ ssh_host_key
 file_store/
 .sisyphus.pid
 .pytest_cache/
+.DS_Store

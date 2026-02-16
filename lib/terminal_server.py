@@ -343,12 +343,16 @@ class BBSSession:
             idx = int(line.strip()) - 1
             if 0 <= idx < len(door_list):
                 self.writeln(f"\r\nLaunching {door_list[idx]['name']}...")
-                await door_mod.launch_door(
-                    door_list[idx]["id"],
-                    self.user["id"],
-                    self.user["username"],
-                )
-                await self.pause()
+                door = door_list[idx]
+                if door_mod.is_python_door(door):
+                    await door_mod.run_python_door(door, self)
+                else:
+                    await door_mod.launch_door(
+                        door["id"],
+                        self.user["id"],
+                        self.user["username"],
+                    )
+                    await self.pause()
 
     async def admin_menu(self):
         """Admin user management menu."""

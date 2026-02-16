@@ -1,4 +1,6 @@
 import asyncio
+import importlib.util
+from pathlib import Path
 
 from lib import config
 
@@ -86,3 +88,29 @@ async def launch_door(
     )
     await proc.wait()
     return proc.returncode
+
+
+def is_python_door(door: dict) -> bool:
+    """Check if a door uses the python:module:function convention."""
+    return door.get("command", "").startswith("python:")
+
+
+async def run_python_door(door: dict, session) -> None:
+    """Run a Python-based door game inline with the BBS session.
+
+    Command format in door.cfg: python:<module>:<function>
+    The function is called with the session as its sole argument.
+    """
+    parts = door["command"].split(":")
+    if len(parts) != 3:
+        return
+    module_name, func_name = parts[1], parts[2]
+    module_path = Path(door["path"]) / f"{module_name}.py"
+    if not module_path.exists():
+        return
+
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    func = getattr(mod, func_name)
+    await func(session)

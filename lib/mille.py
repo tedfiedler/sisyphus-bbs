@@ -1,4 +1,4 @@
-"""Mille Bornes — shared game logic for terminal and web interfaces."""
+"""Mille Bornes — game logic for the web interface."""
 
 import random
 import time

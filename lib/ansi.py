@@ -29,19 +29,21 @@ def load_ansi(name: str) -> str:
 
 def box(title: str, lines: list[str], width: int = 60) -> str:
     """Draw a bordered box around content."""
-    out = [f"{CYAN}\u250c{'\u2500' * (width - 2)}\u2510{RESET}"]
+    inner = width - 2  # chars between the two │ borders
+    out = [f"{CYAN}\u250c{'\u2500' * inner}\u2510{RESET}"]
     padded_title = f" {title} "
-    left = (width - 2 - len(padded_title)) // 2
-    right = width - 2 - left - len(padded_title)
+    left = (inner - len(padded_title)) // 2
+    right = inner - left - len(padded_title)
     out.append(f"{CYAN}\u2502{'\u2500' * left}{WHITE}{padded_title}{CYAN}{'\u2500' * right}\u2502{RESET}")
-    out.append(f"{CYAN}\u251c{'\u2500' * (width - 2)}\u2524{RESET}")
+    out.append(f"{CYAN}\u251c{'\u2500' * inner}\u2524{RESET}")
     for line in lines:
         visible_len = len(strip_ansi(line))
-        pad = width - 2 - visible_len
+        # 1 leading space + content + trailing pad = inner chars
+        pad = inner - 1 - visible_len
         if pad < 0:
             pad = 0
-        out.append(f"{CYAN}\u2502{RESET} {line}{' ' * (pad - 1)}{CYAN}\u2502{RESET}")
-    out.append(f"{CYAN}\u2514{'\u2500' * (width - 2)}\u2518{RESET}")
+        out.append(f"{CYAN}\u2502{RESET} {line}{' ' * pad}{CYAN}\u2502{RESET}")
+    out.append(f"{CYAN}\u2514{'\u2500' * inner}\u2518{RESET}")
     return "\r\n".join(out)
 
 

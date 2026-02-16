@@ -27,14 +27,28 @@ def load_ansi(name: str) -> str:
     return ""
 
 
-def panel(title: str, lines: list[str], width: int = 52) -> str:
-    """Draw a panel with = header and - separator, Mille Bornes style."""
-    out = [f"{CYAN}{'=' * width}{RESET}"]
+def panel(title: str, lines: list[str], width: int = 0) -> str:
+    """Draw a panel with = header and - separator, Mille Bornes style.
+
+    Width auto-sizes to fit the longest line (min 40). Content is
+    indented 2 spaces, so the bar extends 4 chars beyond the widest
+    visible content.
+    """
+    # Auto-size: 2-space indent + content + 2-space right margin
+    widest = len(title)
+    for line in lines:
+        vlen = len(strip_ansi(line))
+        if vlen > widest:
+            widest = vlen
+    auto = widest + 4
+    w = max(width, auto, 40)
+
+    out = [f"{CYAN}{'=' * w}{RESET}"]
     out.append(f"  {WHITE}{BOLD}{title}{RESET}")
-    out.append(f"{CYAN}{'=' * width}{RESET}")
+    out.append(f"{CYAN}{'=' * w}{RESET}")
     for line in lines:
         out.append(f"  {line}")
-    out.append(f"{CYAN}{'-' * width}{RESET}")
+    out.append(f"{CYAN}{'-' * w}{RESET}")
     return "\r\n".join(out)
 
 

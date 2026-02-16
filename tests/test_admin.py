@@ -3,10 +3,10 @@ import tempfile
 
 import pytest
 
-import auth
-import boards
-import files as file_mod
-from chat import chat_manager, delete_message
+from lib import auth
+from lib import boards
+from lib import files as file_mod
+from lib.chat import chat_manager, delete_message
 
 
 @pytest.mark.asyncio

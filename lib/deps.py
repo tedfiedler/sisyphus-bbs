@@ -1,0 +1,24 @@
+from fastapi import Request, HTTPException
+
+from lib import auth
+
+
+async def get_current_user(request: Request) -> dict | None:
+    token = request.cookies.get("session_token")
+    if not token:
+        return None
+    return await auth.get_user_by_token(token)
+
+
+async def require_user(request: Request) -> dict:
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=302, headers={"Location": "/"})
+    return user
+
+
+async def require_admin(request: Request) -> dict:
+    user = await require_user(request)
+    if not auth.is_admin(user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return user

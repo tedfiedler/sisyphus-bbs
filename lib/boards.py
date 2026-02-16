@@ -1,4 +1,4 @@
-from db import get_db
+from lib.db import get_db
 
 
 async def list_boards() -> list[dict]:

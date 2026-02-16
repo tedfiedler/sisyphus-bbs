@@ -15,8 +15,8 @@ os.environ["SISYPHUS_DB"] = os.path.join(tempfile.gettempdir(), "sisyphus_test.d
 @pytest_asyncio.fixture(autouse=True)
 async def reset_db():
     """Reset database before each test."""
-    import config
-    import db
+    from lib import config
+    from lib import db
 
     # Close any existing connection
     await db.close_db()

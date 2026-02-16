@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_FILE="$SCRIPT_DIR/sisyphus.log"
+LOG_FILE="$SCRIPT_DIR/log/sisyphus.log"
 WEB_PORT=8000
 SSH_PORT=2222
 
@@ -17,8 +17,9 @@ start() {
     fi
 
     echo "Starting Sisyphus BBS..."
+    mkdir -p "$SCRIPT_DIR/log" "$SCRIPT_DIR/db"
     cd "$SCRIPT_DIR"
-    python3.14 main.py >> "$LOG_FILE" 2>&1 &
+    python3.14 src/app.py >> "$LOG_FILE" 2>&1 &
 
     for i in $(seq 1 10); do
         if nc -z localhost $WEB_PORT 2>/dev/null; then

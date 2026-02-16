@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 
-import config
-from db import get_db
+from lib import config
+from lib.db import get_db
 
 
 def hash_password(password: str) -> str:

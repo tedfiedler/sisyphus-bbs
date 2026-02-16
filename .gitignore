@@ -1,9 +1,9 @@
 __pycache__/
 *.pyc
-*.db
-*.db-shm
-*.db-wal
-*.log
+db/*.db
+db/*.db-shm
+db/*.db-wal
+log/*.log
 ssh_host_key
 file_store/
 .sisyphus.pid

@@ -1,8 +1,6 @@
-import os
 import asyncio
-from pathlib import Path
 
-import config
+from lib import config
 
 
 def generate_door32sys(
@@ -32,7 +30,7 @@ def generate_door32sys(
 
 async def list_doors() -> list[dict]:
     """List configured door games from the doors directory."""
-    doors_dir = config.BASE_DIR / "doors"
+    doors_dir = config.DOORS_DIR
     doors_dir.mkdir(exist_ok=True)
     result = []
     for entry in sorted(doors_dir.iterdir()):
@@ -61,7 +59,7 @@ async def launch_door(
     stdout: asyncio.StreamWriter | None = None,
 ) -> int:
     """Launch a door game, returning the exit code."""
-    door_dir = config.BASE_DIR / "doors" / door_id
+    door_dir = config.DOORS_DIR / door_id
     cfg_file = door_dir / "door.cfg"
     if not cfg_file.exists():
         return -1

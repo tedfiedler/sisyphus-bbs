@@ -1,15 +1,19 @@
 """SSH terminal server for Sisyphus BBS."""
 
 import asyncio
+import logging
+
 import asyncssh
 
-import config
-import auth
-import boards
-import ansi
-from chat import chat_manager
-import doors as door_mod
-import files as file_mod
+from lib import config
+from lib import auth
+from lib import boards
+from lib import ansi
+from lib.chat import chat_manager
+from lib import doors as door_mod
+from lib import files as file_mod
+
+logger = logging.getLogger(__name__)
 
 
 class BBSSession:
@@ -224,10 +228,10 @@ class BBSSession:
         post_list = await boards.list_posts(thread["id"])
         for i, p in enumerate(post_list, 1):
             post_label = f" #{i} (id:{p['id']})" if auth.is_admin(self.user) else ""
-            self.writeln(f"{ansi.CYAN}┌─ {ansi.WHITE}{p['author_name']}{ansi.RESET} {ansi.DIM}{p['created_at']}{post_label}{ansi.RESET}")
+            self.writeln(f"{ansi.CYAN}\u250c\u2500 {ansi.WHITE}{p['author_name']}{ansi.RESET} {ansi.DIM}{p['created_at']}{post_label}{ansi.RESET}")
             for line in p["body"].split("\n"):
-                self.writeln(f"{ansi.CYAN}│{ansi.RESET} {line}")
-            self.writeln(f"{ansi.CYAN}└{'─' * 40}{ansi.RESET}")
+                self.writeln(f"{ansi.CYAN}\u2502{ansi.RESET} {line}")
+            self.writeln(f"{ansi.CYAN}\u2514{'\u2500' * 40}{ansi.RESET}")
 
         if not thread.get("locked"):
             admin_opts = ""
@@ -468,4 +472,4 @@ async def start_ssh_server():
             server_host_keys=[key_path],
             process_factory=handle_client,
         )
-    print(f"SSH server listening on {config.SSH_HOST}:{config.SSH_PORT}")
+    logger.info("SSH server listening on %s:%s", config.SSH_HOST, config.SSH_PORT)

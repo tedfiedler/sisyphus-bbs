@@ -1,5 +1,5 @@
 import aiosqlite
-import config
+from lib import config
 
 _db: aiosqlite.Connection | None = None
 

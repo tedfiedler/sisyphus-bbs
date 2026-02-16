@@ -1,7 +1,7 @@
 import pytest
 
-import auth
-import boards
+from lib import auth
+from lib import boards
 
 
 @pytest.mark.asyncio

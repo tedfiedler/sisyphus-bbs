@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-import auth
-from chat import ChatManager
+from lib import auth
+from lib.chat import ChatManager
 
 
 @pytest.mark.asyncio

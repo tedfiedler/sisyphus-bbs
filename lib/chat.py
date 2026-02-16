@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from db import get_db
+from lib.db import get_db
 
 
 class ChatManager:

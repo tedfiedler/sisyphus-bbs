@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-import config
-from db import get_db
+from lib import config
+from lib.db import get_db
 
 
 async def list_files(area: str | None = None) -> list[dict]:

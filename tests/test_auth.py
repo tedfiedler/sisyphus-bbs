@@ -1,6 +1,6 @@
 import pytest
 
-import auth
+from lib import auth
 
 
 @pytest.mark.asyncio

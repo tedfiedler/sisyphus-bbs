@@ -1,8 +1,6 @@
 """ANSI art rendering and terminal menu helpers."""
 
-from pathlib import Path
-
-import config
+from lib import config
 
 # ANSI escape codes
 RESET = "\033[0m"
@@ -22,7 +20,7 @@ def load_ansi(name: str) -> str:
     Converts literal \\033 sequences to real ESC bytes so .ans files
     can be edited as plain text.
     """
-    path = config.BASE_DIR / "ansi_art" / f"{name}.ans"
+    path = config.ANSI_ART_DIR / f"{name}.ans"
     if path.exists():
         text = path.read_text()
         return text.replace("\\033", "\033")
@@ -31,19 +29,19 @@ def load_ansi(name: str) -> str:
 
 def box(title: str, lines: list[str], width: int = 60) -> str:
     """Draw a bordered box around content."""
-    out = [f"{CYAN}┌{'─' * (width - 2)}┐{RESET}"]
+    out = [f"{CYAN}\u250c{'\u2500' * (width - 2)}\u2510{RESET}"]
     padded_title = f" {title} "
     left = (width - 2 - len(padded_title)) // 2
     right = width - 2 - left - len(padded_title)
-    out.append(f"{CYAN}│{'─' * left}{WHITE}{padded_title}{CYAN}{'─' * right}│{RESET}")
-    out.append(f"{CYAN}├{'─' * (width - 2)}┤{RESET}")
+    out.append(f"{CYAN}\u2502{'\u2500' * left}{WHITE}{padded_title}{CYAN}{'\u2500' * right}\u2502{RESET}")
+    out.append(f"{CYAN}\u251c{'\u2500' * (width - 2)}\u2524{RESET}")
     for line in lines:
         visible_len = len(strip_ansi(line))
         pad = width - 2 - visible_len
         if pad < 0:
             pad = 0
-        out.append(f"{CYAN}│{RESET} {line}{' ' * (pad - 1)}{CYAN}│{RESET}")
-    out.append(f"{CYAN}└{'─' * (width - 2)}┘{RESET}")
+        out.append(f"{CYAN}\u2502{RESET} {line}{' ' * (pad - 1)}{CYAN}\u2502{RESET}")
+    out.append(f"{CYAN}\u2514{'\u2500' * (width - 2)}\u2518{RESET}")
     return "\r\n".join(out)
 
 

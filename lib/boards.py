@@ -76,17 +76,22 @@ async def create_thread(board_id: int, subject: str, author_id: int, body: str) 
     return thread_id
 
 
-async def list_posts(thread_id: int) -> list[dict]:
-    """Return all posts in a thread with author names, ordered by creation time."""
+async def list_posts(thread_id: int, user_id: int | None = None) -> list[dict]:
+    """Return all posts in a thread with author names, like counts, and current user's liked status."""
     db = await get_db()
     cursor = await db.execute(
-        """SELECT p.*, u.username as author_name
+        """SELECT p.*, u.username as author_name,
+           (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) as like_count,
+           (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) as liked
            FROM posts p JOIN users u ON p.author_id = u.id
            WHERE p.thread_id = ?
            ORDER BY p.created_at""",
-        (thread_id,),
+        (user_id, thread_id),
     )
-    return [dict(r) for r in await cursor.fetchall()]
+    rows = [dict(r) for r in await cursor.fetchall()]
+    for row in rows:
+        row["liked"] = bool(row["liked"])
+    return rows
 
 
 async def create_post(thread_id: int, author_id: int, body: str) -> int:
@@ -98,6 +103,29 @@ async def create_post(thread_id: int, author_id: int, body: str) -> int:
     )
     await db.commit()
     return cursor.lastrowid
+
+
+async def toggle_like(post_id: int, user_id: int) -> int:
+    """Toggle a like on a post. Returns the new like count."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?",
+        (post_id, user_id),
+    )
+    existing = await cursor.fetchone()
+    if existing:
+        await db.execute("DELETE FROM post_likes WHERE id = ?", (existing[0],))
+    else:
+        await db.execute(
+            "INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)",
+            (post_id, user_id),
+        )
+    await db.commit()
+    cursor = await db.execute(
+        "SELECT COUNT(*) FROM post_likes WHERE post_id = ?", (post_id,)
+    )
+    row = await cursor.fetchone()
+    return row[0]
 
 
 async def delete_post(post_id: int):

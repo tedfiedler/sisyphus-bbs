@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from lib import boards
+from lib.db import get_db
 from lib.deps import require_user
 from lib.web_server import templates, _add_globals
 
@@ -54,10 +55,22 @@ async def thread_view(request: Request, thread_id: int, user: dict = Depends(req
     if not thread:
         return RedirectResponse("/boards", status_code=302)
     board = await boards.get_board(thread["board_id"])
-    post_list = await boards.list_posts(thread_id)
+    post_list = await boards.list_posts(thread_id, user["id"])
     return templates.TemplateResponse(
         "thread.html", _add_globals(request, {"user": user, "board": board, "thread": thread, "posts": post_list, "threads": None})
     )
+
+
+@router.post("/post/{post_id}/like")
+async def post_like(request: Request, post_id: int, user: dict = Depends(require_user)):
+    """Toggle a like on a post and redirect back to the thread."""
+    db = await get_db()
+    cursor = await db.execute("SELECT thread_id FROM posts WHERE id = ?", (post_id,))
+    row = await cursor.fetchone()
+    if not row:
+        return RedirectResponse("/boards", status_code=302)
+    await boards.toggle_like(post_id, user["id"])
+    return RedirectResponse(f"/thread/{row[0]}", status_code=302)
 
 
 @router.post("/thread/{thread_id}/reply")

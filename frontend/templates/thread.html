@@ -30,6 +30,9 @@
             <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete this post?')">Del</button>
         </form>
         {% endif %}
+        <form method="post" action="/post/{{ post.id }}/like" style="display:inline; margin-left: 10px;">
+            <button type="submit" class="btn-small{% if post.liked %} liked{% endif %}" title="Like this post">&#128077; {{ post.like_count }}</button>
+        </form>
     </div>
     <div class="post-body">{{ post.body }}</div>
 </div>

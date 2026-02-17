@@ -61,6 +61,18 @@ async def delete_channel(name: str, user: dict = Depends(require_admin)):
     return RedirectResponse("/chat", status_code=303)
 
 
+@router.post("/chat/announce")
+async def announce(
+    request: Request,
+    message: str = Form(...),
+    user: dict = Depends(require_admin),
+):
+    message = message.strip()
+    if message:
+        await chat_manager.broadcast_all(user["username"], message)
+    return RedirectResponse("/chat", status_code=303)
+
+
 @router.post("/chat/dm/{target_user_id}")
 async def start_dm(target_user_id: int, user: dict = Depends(require_user)):
     if target_user_id == user["id"]:

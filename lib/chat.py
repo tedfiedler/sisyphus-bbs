@@ -48,6 +48,22 @@ class ChatManager:
             return insert_cursor.lastrowid
         return None
 
+    async def broadcast_all(self, username: str, message: str):
+        """Send an announcement to every connected user across all channels."""
+        payload = {
+            "type": "announcement",
+            "username": username,
+            "message": message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        seen: set[int] = set()
+        for queues in self._subscribers.values():
+            for q in queues:
+                qid = id(q)
+                if qid not in seen:
+                    seen.add(qid)
+                    await q.put(payload)
+
     async def recent_messages(self, channel: str = "lobby", limit: int = 50) -> list[dict]:
         db = await get_db()
         cursor = await db.execute(

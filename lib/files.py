@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from lib import config
@@ -77,9 +78,18 @@ async def delete_file(file_id: int):
 
 
 def save_upload(filename: str, data: bytes, area: str = "general") -> tuple[str, int]:
+    # Sanitize filename — strip path components
+    filename = Path(filename).name
+    if not filename or filename.startswith('.'):
+        raise ValueError("Invalid filename")
+    # Sanitize area — alphanumeric, underscore, hyphen only
+    area = re.sub(r'[^a-zA-Z0-9_-]', '', area) or "general"
     area_dir = config.FILE_STORE / area
     area_dir.mkdir(parents=True, exist_ok=True)
     dest = area_dir / filename
+    # Verify resolved path stays inside FILE_STORE
+    if not dest.resolve().is_relative_to(config.FILE_STORE.resolve()):
+        raise ValueError("Path traversal detected")
     # Avoid overwriting
     counter = 1
     while dest.exists():

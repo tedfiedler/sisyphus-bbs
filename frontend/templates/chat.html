@@ -37,6 +37,14 @@
         <div class="user-item" onclick="startDM({{ ou.id }})">{{ ou.username }}</div>
         {% endif %}
         {% endfor %}
+
+        {% if user.access_level >= 1 %}
+        <h3>Announce</h3>
+        <form method="post" action="/chat/announce" id="announce-form">
+            <input type="text" name="message" placeholder="Broadcast to all..." style="font-size:12px; padding:4px;">
+            <button type="submit" class="btn-small" style="margin-top:2px; background:var(--warn);">Send All</button>
+        </form>
+        {% endif %}
     </div>
     <div id="chat-main">
         <div class="box">
@@ -105,6 +113,10 @@ function connect() {
             appendSystem(data.message || 'Error');
             return;
         }
+        if (data.type === 'announcement') {
+            appendAnnouncement(data);
+            return;
+        }
         appendMessage(data);
     };
 
@@ -135,6 +147,18 @@ function appendMessage(data) {
         delBtn = ` <form method="post" action="/admin/chat/${data.id}/delete" style="display:inline; margin-left: 5px;"><button type="submit" class="btn-danger btn-small">Del</button></form>`;
     }
     div.innerHTML = `<span class="msg-time">[${time || data.created_at || ''}]</span> <span class="msg-user">&lt;${data.username}&gt;</span> ${escapeHtml(data.message)}${delBtn}`;
+    msgDiv.appendChild(div);
+    msgDiv.scrollTop = msgDiv.scrollHeight;
+}
+
+function appendAnnouncement(data) {
+    const div = document.createElement('div');
+    div.style.color = 'var(--warn)';
+    div.style.borderLeft = '3px solid var(--warn)';
+    div.style.paddingLeft = '8px';
+    div.style.margin = '4px 0';
+    const time = data.timestamp ? data.timestamp.substring(11, 19) : '';
+    div.innerHTML = `<span class="msg-time">[${time}]</span> <strong>[ANNOUNCE]</strong> &lt;${escapeHtml(data.username)}&gt; ${escapeHtml(data.message)}`;
     msgDiv.appendChild(div);
     msgDiv.scrollTop = msgDiv.scrollHeight;
 }

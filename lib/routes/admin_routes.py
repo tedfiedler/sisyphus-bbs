@@ -22,6 +22,8 @@ async def admin_panel(request: Request, user: dict = Depends(require_admin)):
 
 @router.post("/admin/users/{user_id}/promote")
 async def admin_promote(request: Request, user_id: int, user: dict = Depends(require_admin)):
+    if not auth.is_superadmin(user):
+        return HTMLResponse("Forbidden", status_code=403)
     target = await auth.get_user(user_id)
     if target:
         await auth.set_access_level(user_id, 1)
@@ -29,10 +31,8 @@ async def admin_promote(request: Request, user_id: int, user: dict = Depends(req
 
 
 @router.post("/admin/users/{user_id}/demote")
-async def admin_demote(request: Request, user_id: int):
-    from lib.deps import get_current_user
-    user = await get_current_user(request)
-    if not user or not auth.is_superadmin(user):
+async def admin_demote(request: Request, user_id: int, user: dict = Depends(require_admin)):
+    if not auth.is_superadmin(user):
         return HTMLResponse("Forbidden", status_code=403)
     target = await auth.get_user(user_id)
     if target:

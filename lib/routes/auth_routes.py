@@ -1,3 +1,9 @@
+"""Authentication routes: login, registration, and logout.
+
+Provides form-based authentication with session cookies. Includes
+per-IP rate limiting on the login endpoint to mitigate brute-force attacks.
+"""
+
 import time
 from collections import defaultdict
 
@@ -17,6 +23,7 @@ _WINDOW_SECONDS = 300   # 5-minute window
 
 
 def _is_rate_limited(ip: str) -> bool:
+    """Check whether the given IP has exceeded the failed-login threshold."""
     now = time.monotonic()
     attempts = _login_attempts[ip]
     # Prune old entries
@@ -25,15 +32,18 @@ def _is_rate_limited(ip: str) -> bool:
 
 
 def _record_failure(ip: str):
+    """Record a failed login attempt timestamp for the given IP."""
     _login_attempts[ip].append(time.monotonic())
 
 
 def _clear_failures(ip: str):
+    """Remove all recorded failures for the given IP after a successful login."""
     _login_attempts.pop(ip, None)
 
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    """Serve the landing page. Redirect authenticated users to /boards."""
     token = request.cookies.get("session_token")
     user = await auth.get_user_by_token(token) if token else None
     if user:
@@ -43,6 +53,7 @@ async def index(request: Request):
 
 @router.post("/register")
 async def register(request: Request, username: str = Form(), password: str = Form(), email: str = Form("")):
+    """Create a new user account, authenticate, and set the session cookie."""
     result = await auth.register_user(username, password, email)
     if result is None:
         return templates.TemplateResponse(
@@ -52,12 +63,18 @@ async def register(request: Request, username: str = Form(), password: str = For
     user = await auth.authenticate(username, password)
     token = await auth.create_session(user["id"])
     resp = RedirectResponse("/boards", status_code=302)
-    resp.set_cookie("session_token", token, httponly=True, secure=True, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
+    is_https = request.url.scheme == "https"
+    resp.set_cookie("session_token", token, httponly=True, secure=is_https, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
     return resp
 
 
 @router.post("/login")
 async def login(request: Request, username: str = Form(), password: str = Form()):
+    """Authenticate a user and set the session cookie.
+
+    Rate-limited to ``_MAX_ATTEMPTS`` failures per ``_WINDOW_SECONDS`` per
+    client IP. On success the failure counter is cleared.
+    """
     client_ip = request.client.host if request.client else "unknown"
     if _is_rate_limited(client_ip):
         return templates.TemplateResponse(
@@ -74,12 +91,14 @@ async def login(request: Request, username: str = Form(), password: str = Form()
     _clear_failures(client_ip)
     token = await auth.create_session(user["id"])
     resp = RedirectResponse("/boards", status_code=302)
-    resp.set_cookie("session_token", token, httponly=True, secure=True, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
+    is_https = request.url.scheme == "https"
+    resp.set_cookie("session_token", token, httponly=True, secure=is_https, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
     return resp
 
 
 @router.get("/logout")
 async def logout(request: Request):
+    """Destroy the user's session and clear the session cookie."""
     token = request.cookies.get("session_token")
     if token:
         await auth.delete_session(token)

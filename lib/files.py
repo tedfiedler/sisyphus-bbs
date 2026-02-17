@@ -1,3 +1,5 @@
+"""File storage and retrieval operations backed by SQLite and the local filesystem."""
+
 import os
 import re
 from pathlib import Path
@@ -7,6 +9,7 @@ from lib.db import get_db
 
 
 async def list_files(area: str | None = None) -> list[dict]:
+    """Return all files, optionally filtered by area, sorted newest first."""
     db = await get_db()
     if area:
         cursor = await db.execute(
@@ -25,6 +28,7 @@ async def list_files(area: str | None = None) -> list[dict]:
 
 
 async def list_areas() -> list[str]:
+    """Return a sorted list of distinct area names that contain files."""
     db = await get_db()
     cursor = await db.execute("SELECT DISTINCT area FROM files ORDER BY area")
     return [row["area"] for row in await cursor.fetchall()]
@@ -38,6 +42,7 @@ async def add_file(
     area: str = "general",
     description: str = "",
 ) -> int:
+    """Insert a new file record into the database and return its row ID."""
     db = await get_db()
     cursor = await db.execute(
         """INSERT INTO files (area, filename, description, uploader_id, size_bytes, path)
@@ -49,6 +54,7 @@ async def add_file(
 
 
 async def get_file(file_id: int) -> dict | None:
+    """Return the file record for the given ID, or None if not found."""
     db = await get_db()
     cursor = await db.execute("SELECT * FROM files WHERE id = ?", (file_id,))
     row = await cursor.fetchone()
@@ -56,6 +62,7 @@ async def get_file(file_id: int) -> dict | None:
 
 
 async def increment_download(file_id: int):
+    """Bump the download counter for the given file by one."""
     db = await get_db()
     await db.execute(
         "UPDATE files SET download_count = download_count + 1 WHERE id = ?",
@@ -65,6 +72,7 @@ async def increment_download(file_id: int):
 
 
 async def delete_file(file_id: int):
+    """Remove the file from disk and delete its database record."""
     db = await get_db()
     cursor = await db.execute("SELECT path FROM files WHERE id = ?", (file_id,))
     row = await cursor.fetchone()
@@ -78,6 +86,7 @@ async def delete_file(file_id: int):
 
 
 def save_upload(filename: str, data: bytes, area: str = "general") -> tuple[str, int]:
+    """Sanitize the filename, write bytes to the area directory, and return the path and size."""
     # Sanitize filename — strip path components
     filename = Path(filename).name
     if not filename or filename.startswith('.'):

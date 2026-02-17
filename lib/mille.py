@@ -27,7 +27,10 @@ SAFETY_FOR = {
 
 
 class Player:
+    """Represent a Mille Bornes player with hand, miles, status effects, and safeties."""
+
     def __init__(self, name):
+        """Initialize a player with an empty hand and default state."""
         self.name = name
         self.hand = []
         self.miles = 0
@@ -40,17 +43,20 @@ class Player:
 
     @property
     def can_move(self):
+        """Return True if the player is able to play distance cards."""
         if self.hazard is not None:
             return False
         return self.rolling or "Right of Way" in self.safeties
 
 
 def card_name(card):
+    """Return a human-readable display name for a card tuple."""
     ctype, value = card
     return f"{value} mi" if ctype == "distance" else value
 
 
 def build_deck():
+    """Build and shuffle a standard 101-card Mille Bornes deck."""
     specs = [
         ("distance", 25, 10), ("distance", 50, 10), ("distance", 75, 10),
         ("distance", 100, 12), ("distance", 200, 4),
@@ -71,6 +77,7 @@ def build_deck():
 
 
 def can_play(card, player, opponent):
+    """Return True if the given card can legally be played by the player."""
     ctype, value = card
 
     if ctype == "safety":
@@ -245,6 +252,7 @@ def _worst_card(player, opponent):
 
 
 def calc_score(player, opponent, winner):
+    """Calculate final score for a player including bonus points."""
     pts = player.miles
     pts += len(player.safeties) * 100
     if len(player.safeties) == 4:
@@ -265,6 +273,8 @@ def calc_score(player, opponent, winner):
 
 @dataclass
 class GameState:
+    """Hold the full state of a single-player (vs CPU) Mille Bornes game."""
+
     deck: list
     human: Player
     cpu: Player
@@ -293,10 +303,12 @@ def new_game(user_id: int) -> GameState:
 
 
 def get_game(user_id: int) -> GameState | None:
+    """Return the active single-player game for a user, or None."""
     return _games.get(user_id)
 
 
 def remove_game(user_id: int) -> None:
+    """Remove and discard the active single-player game for a user."""
     _games.pop(user_id, None)
 
 
@@ -308,6 +320,8 @@ INVITE_TIMEOUT = 60  # seconds
 
 @dataclass
 class GameInvite:
+    """Represent a pending PvP game invitation between two users."""
+
     from_user_id: int
     from_username: str
     to_user_id: int
@@ -320,6 +334,7 @@ _flash: dict[int, str] = {}           # keyed by user_id, one-shot messages
 
 
 def create_invite(from_id: int, from_name: str, to_id: int, to_name: str) -> GameInvite:
+    """Create and store a new game invite, replacing any prior invite from the same user."""
     inv = GameInvite(from_user_id=from_id, from_username=from_name,
                      to_user_id=to_id, to_username=to_name,
                      created_at=time.time())
@@ -341,14 +356,17 @@ def get_invite_to(user_id: int) -> GameInvite | None:
 
 
 def cancel_invite(from_id: int) -> None:
+    """Cancel an outgoing invite by the sender's user ID."""
     _invites.pop(from_id, None)
 
 
 def set_flash(user_id: int, message: str) -> None:
+    """Store a one-shot flash message for a user, shown on their next page load."""
     _flash[user_id] = message
 
 
 def pop_flash(user_id: int) -> str | None:
+    """Return and remove the flash message for a user, or None if absent."""
     return _flash.pop(user_id, None)
 
 
@@ -368,6 +386,8 @@ def expire_invites() -> None:
 
 @dataclass
 class PvpGameState:
+    """Hold the full state of a player-vs-player Mille Bornes game."""
+
     game_id: str
     deck: list
     player1: Player
@@ -410,6 +430,7 @@ def new_pvp_game(p1_id: int, p1_name: str, p2_id: int, p2_name: str) -> PvpGameS
 
 
 def get_pvp_game(user_id: int) -> PvpGameState | None:
+    """Return the active PvP game for a user, or None."""
     gid = _user_pvp.get(user_id)
     if gid is None:
         return None
@@ -417,6 +438,7 @@ def get_pvp_game(user_id: int) -> PvpGameState | None:
 
 
 def remove_pvp_game(game_id: str) -> None:
+    """Remove a PvP game and unlink both players from it."""
     game = _pvp_games.pop(game_id, None)
     if game:
         _user_pvp.pop(game.player1_id, None)
@@ -435,6 +457,7 @@ def get_me_and_opponent(game: PvpGameState, user_id: int) -> tuple[Player, Playe
 # ---------------------------------------------------------------------------
 
 async def save_score(user_id: int, score: int, opponent: str, won: bool):
+    """Persist a game score to the database."""
     db = await get_db()
     await db.execute(
         "INSERT INTO game_scores (user_id, score, opponent, won) VALUES (?, ?, ?, ?)",

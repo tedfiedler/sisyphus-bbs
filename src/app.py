@@ -1,6 +1,7 @@
-"""Sisyphus BBS - Entry point.
+"""Sisyphus BBS — application entry point.
 
-Starts the web server (FastAPI/Uvicorn).
+Initialize the database, configure TLS (if certificates are present),
+and start the Uvicorn web server hosting the FastAPI application.
 """
 
 import asyncio
@@ -21,24 +22,39 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
+    """Initialize the database and start the web server.
+
+    If TLS certificate and key files exist at the configured paths,
+    Uvicorn is started with HTTPS enabled. Otherwise it falls back
+    to plain HTTP.
+    """
     setup_logging()
 
     # Initialize database
     await get_db()
     logger.info("Database initialized at %s", config.DB_PATH)
 
-    # Start web server
+    # Start web server — use HTTPS if certs are present
+    ssl_args = {}
+    if config.SSL_CERTFILE.exists() and config.SSL_KEYFILE.exists():
+        ssl_args["ssl_certfile"] = str(config.SSL_CERTFILE)
+        ssl_args["ssl_keyfile"] = str(config.SSL_KEYFILE)
+        proto = "https"
+    else:
+        proto = "http"
+
     uv_config = uvicorn.Config(
         "lib.web_server:app",
         host=config.WEB_HOST,
         port=config.WEB_PORT,
         log_level="info",
+        **ssl_args,
     )
     server = uvicorn.Server(uv_config)
 
     logger.info("=" * 50)
     logger.info("  %s", config.BBS_NAME)
-    logger.info("  Web:  http://%s:%s", config.WEB_HOST, config.WEB_PORT)
+    logger.info("  Web:  %s://%s:%s", proto, config.WEB_HOST, config.WEB_PORT)
     logger.info("=" * 50)
 
     try:

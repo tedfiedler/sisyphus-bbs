@@ -1,3 +1,9 @@
+"""Authentication and user management utilities.
+
+Provide password hashing, session management, and role-based access control
+backed by an SQLite database.
+"""
+
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -8,14 +14,20 @@ from lib.db import get_db
 
 
 def hash_password(password: str) -> str:
+    """Hash a plaintext password using bcrypt and return the encoded hash."""
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    """Verify a plaintext password against a bcrypt hash."""
     return bcrypt.checkpw(password.encode(), password_hash.encode())
 
 
 async def register_user(username: str, password: str, email: str = "") -> dict | None:
+    """Register a new user and return their info, or None on failure.
+
+    Promote the first registered user to superadmin automatically.
+    """
     db = await get_db()
     try:
         pw_hash = hash_password(password)
@@ -34,6 +46,7 @@ async def register_user(username: str, password: str, email: str = "") -> dict |
 
 
 async def authenticate(username: str, password: str) -> dict | None:
+    """Authenticate a user by username and password, returning user info or None."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT id, username, password_hash, access_level FROM users WHERE username = ?",
@@ -52,6 +65,7 @@ async def authenticate(username: str, password: str) -> dict | None:
 
 
 async def create_session(user_id: int) -> str:
+    """Create a new session for the given user and return the session token."""
     db = await get_db()
     token = secrets.token_urlsafe(32)
     expires = datetime.now(timezone.utc) + timedelta(hours=config.SESSION_EXPIRY_HOURS)
@@ -64,6 +78,7 @@ async def create_session(user_id: int) -> str:
 
 
 async def get_user_by_token(token: str) -> dict | None:
+    """Look up a user by session token, returning None if expired or invalid."""
     db = await get_db()
     cursor = await db.execute(
         """SELECT u.id, u.username, u.access_level
@@ -78,20 +93,24 @@ async def get_user_by_token(token: str) -> dict | None:
 
 
 async def delete_session(token: str):
+    """Delete a session by its token, effectively logging the user out."""
     db = await get_db()
     await db.execute("DELETE FROM sessions WHERE token = ?", (token,))
     await db.commit()
 
 
 def is_admin(user: dict) -> bool:
+    """Check whether the user has admin privileges (access level >= 1)."""
     return user.get("access_level", 0) >= 1
 
 
 def is_superadmin(user: dict) -> bool:
+    """Check whether the user has superadmin privileges (access level == 2)."""
     return user.get("access_level", 0) == 2
 
 
 async def list_users() -> list[dict]:
+    """Return all users ordered by ID, excluding password hashes."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT id, username, email, access_level, created_at, last_login FROM users ORDER BY id"
@@ -100,6 +119,7 @@ async def list_users() -> list[dict]:
 
 
 async def get_user(user_id: int) -> dict | None:
+    """Return a single user by ID, or None if not found."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT id, username, email, access_level, created_at, last_login FROM users WHERE id = ?",
@@ -110,6 +130,7 @@ async def get_user(user_id: int) -> dict | None:
 
 
 async def set_access_level(user_id: int, level: int):
+    """Set the access level for a user (0=regular, 1=admin, 2=superadmin)."""
     db = await get_db()
     await db.execute(
         "UPDATE users SET access_level = ? WHERE id = ?", (level, user_id)
@@ -118,6 +139,7 @@ async def set_access_level(user_id: int, level: int):
 
 
 async def delete_user(user_id: int):
+    """Delete a user and all their associated sessions."""
     db = await get_db()
     await db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
     await db.execute("DELETE FROM users WHERE id = ?", (user_id,))

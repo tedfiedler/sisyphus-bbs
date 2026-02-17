@@ -25,8 +25,11 @@ start() {
         if nc -z localhost $WEB_PORT 2>/dev/null; then
             PID=$(get_pid)
             echo "Sisyphus BBS started (PID $PID)"
-            echo "  Web:  http://localhost:$WEB_PORT"
-            echo "  SSH:  ssh -p $SSH_PORT localhost"
+            if [ -f "$SCRIPT_DIR/certs/cert.pem" ] && [ -f "$SCRIPT_DIR/certs/key.pem" ]; then
+                echo "  Web:  https://localhost:$WEB_PORT"
+            else
+                echo "  Web:  http://localhost:$WEB_PORT"
+            fi
             echo "  Logs: $LOG_FILE"
             return 0
         fi

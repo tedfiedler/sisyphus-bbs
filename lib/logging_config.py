@@ -1,9 +1,12 @@
+"""Logging configuration for the Sisyphus BBS application."""
+
 import logging
 
 from lib import config
 
 
 def setup_logging():
+    """Configure root logger with file and console handlers using a timestamped format."""
     log_file = config.LOG_DIR / "sisyphus.log"
     log_file.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,3 +1,9 @@
+"""Forum board and thread routes.
+
+Handles listing boards, viewing individual boards and threads,
+creating new threads, and posting replies.
+"""
+
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -10,18 +16,21 @@ router = APIRouter()
 
 @router.get("/boards", response_class=HTMLResponse)
 async def board_list(request: Request, user: dict = Depends(require_user)):
+    """List all boards with thread and post counts."""
     board_data = await boards.list_boards()
     return templates.TemplateResponse("boards.html", _add_globals(request, {"user": user, "boards": board_data}))
 
 
 @router.post("/boards/create")
 async def board_create(request: Request, name: str = Form(), description: str = Form(""), user: dict = Depends(require_user)):
+    """Create a new board and redirect to the board listing."""
     await boards.create_board(name, description)
     return RedirectResponse("/boards", status_code=302)
 
 
 @router.get("/boards/{board_id}", response_class=HTMLResponse)
 async def board_view(request: Request, board_id: int, user: dict = Depends(require_user)):
+    """Display a board's thread listing. Redirect to /boards if not found."""
     board = await boards.get_board(board_id)
     if not board:
         return RedirectResponse("/boards", status_code=302)
@@ -33,12 +42,14 @@ async def board_view(request: Request, board_id: int, user: dict = Depends(requi
 
 @router.post("/boards/{board_id}/thread")
 async def thread_create(request: Request, board_id: int, subject: str = Form(), body: str = Form(), user: dict = Depends(require_user)):
+    """Create a new thread with an initial post and redirect to it."""
     thread_id = await boards.create_thread(board_id, subject, user["id"], body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)
 
 
 @router.get("/thread/{thread_id}", response_class=HTMLResponse)
 async def thread_view(request: Request, thread_id: int, user: dict = Depends(require_user)):
+    """Display a thread and all its posts. Redirect to /boards if not found."""
     thread = await boards.get_thread(thread_id)
     if not thread:
         return RedirectResponse("/boards", status_code=302)
@@ -51,5 +62,6 @@ async def thread_view(request: Request, thread_id: int, user: dict = Depends(req
 
 @router.post("/thread/{thread_id}/reply")
 async def thread_reply(request: Request, thread_id: int, body: str = Form(), user: dict = Depends(require_user)):
+    """Add a reply post to an existing thread."""
     await boards.create_post(thread_id, user["id"], body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)

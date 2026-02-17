@@ -1,7 +1,10 @@
+"""Database operations for boards, threads, and posts."""
+
 from lib.db import get_db
 
 
 async def list_boards() -> list[dict]:
+    """Return all boards with their thread and post counts, ordered by sort_order then name."""
     db = await get_db()
     cursor = await db.execute(
         """SELECT b.*,
@@ -13,6 +16,7 @@ async def list_boards() -> list[dict]:
 
 
 async def get_board(board_id: int) -> dict | None:
+    """Return a single board by its ID, or None if not found."""
     db = await get_db()
     cursor = await db.execute("SELECT * FROM boards WHERE id = ?", (board_id,))
     row = await cursor.fetchone()
@@ -20,6 +24,7 @@ async def get_board(board_id: int) -> dict | None:
 
 
 async def create_board(name: str, description: str = "", sort_order: int = 0) -> int:
+    """Create a new board and return its ID."""
     db = await get_db()
     cursor = await db.execute(
         "INSERT INTO boards (name, description, sort_order) VALUES (?, ?, ?)",
@@ -30,6 +35,7 @@ async def create_board(name: str, description: str = "", sort_order: int = 0) ->
 
 
 async def list_threads(board_id: int) -> list[dict]:
+    """Return all threads for a board, with post counts, ordered by pinned status then latest activity."""
     db = await get_db()
     cursor = await db.execute(
         """SELECT t.*, u.username as author_name,
@@ -44,6 +50,7 @@ async def list_threads(board_id: int) -> list[dict]:
 
 
 async def get_thread(thread_id: int) -> dict | None:
+    """Return a single thread with its author name, or None if not found."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT t.*, u.username as author_name FROM threads t JOIN users u ON t.author_id = u.id WHERE t.id = ?",
@@ -54,6 +61,7 @@ async def get_thread(thread_id: int) -> dict | None:
 
 
 async def create_thread(board_id: int, subject: str, author_id: int, body: str) -> int:
+    """Create a new thread with an initial post and return the thread ID."""
     db = await get_db()
     cursor = await db.execute(
         "INSERT INTO threads (board_id, subject, author_id) VALUES (?, ?, ?)",
@@ -69,6 +77,7 @@ async def create_thread(board_id: int, subject: str, author_id: int, body: str) 
 
 
 async def list_posts(thread_id: int) -> list[dict]:
+    """Return all posts in a thread with author names, ordered by creation time."""
     db = await get_db()
     cursor = await db.execute(
         """SELECT p.*, u.username as author_name
@@ -81,6 +90,7 @@ async def list_posts(thread_id: int) -> list[dict]:
 
 
 async def create_post(thread_id: int, author_id: int, body: str) -> int:
+    """Create a new post in a thread and return its ID."""
     db = await get_db()
     cursor = await db.execute(
         "INSERT INTO posts (thread_id, author_id, body) VALUES (?, ?, ?)",
@@ -91,12 +101,14 @@ async def create_post(thread_id: int, author_id: int, body: str) -> int:
 
 
 async def delete_post(post_id: int):
+    """Delete a single post by its ID."""
     db = await get_db()
     await db.execute("DELETE FROM posts WHERE id = ?", (post_id,))
     await db.commit()
 
 
 async def delete_thread(thread_id: int):
+    """Delete a thread and all of its posts."""
     db = await get_db()
     await db.execute("DELETE FROM posts WHERE thread_id = ?", (thread_id,))
     await db.execute("DELETE FROM threads WHERE id = ?", (thread_id,))

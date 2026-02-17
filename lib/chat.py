@@ -1,3 +1,5 @@
+"""Real-time chat infrastructure: pub/sub messaging, channel CRUD, and DM helpers."""
+
 import asyncio
 import re
 from datetime import datetime, timezone
@@ -6,15 +8,20 @@ from lib.db import get_db
 
 
 class ChatManager:
+    """Manage pub/sub message delivery and persistence for chat channels."""
+
     def __init__(self):
+        """Initialize the subscriber registry."""
         self._subscribers: dict[str, list[asyncio.Queue]] = {}
 
     def subscribe(self, channel: str = "lobby") -> asyncio.Queue:
+        """Create and return a new message queue subscribed to the given channel."""
         q: asyncio.Queue = asyncio.Queue()
         self._subscribers.setdefault(channel, []).append(q)
         return q
 
     def unsubscribe(self, channel: str, queue: asyncio.Queue):
+        """Remove a queue from a channel's subscriber list."""
         if channel in self._subscribers:
             try:
                 self._subscribers[channel].remove(queue)
@@ -22,6 +29,7 @@ class ChatManager:
                 pass
 
     async def broadcast(self, channel: str, username: str, message: str):
+        """Persist a message and deliver it to all subscribers of the channel."""
         msg_id = await self._store_message(channel, username, message)
         payload = {
             "id": msg_id,
@@ -34,6 +42,7 @@ class ChatManager:
             await q.put(payload)
 
     async def _store_message(self, channel: str, username: str, message: str) -> int | None:
+        """Save a chat message to the database and return its row ID, or None if the user is unknown."""
         db = await get_db()
         cursor = await db.execute(
             "SELECT id FROM users WHERE username = ?", (username,)
@@ -65,6 +74,7 @@ class ChatManager:
                     await q.put(payload)
 
     async def recent_messages(self, channel: str = "lobby", limit: int = 50) -> list[dict]:
+        """Fetch the most recent messages for a channel, ordered oldest-first."""
         db = await get_db()
         cursor = await db.execute(
             """SELECT cm.*, u.username
@@ -79,6 +89,7 @@ class ChatManager:
 
 
 async def delete_message(message_id: int):
+    """Delete a single chat message by its ID."""
     db = await get_db()
     await db.execute("DELETE FROM chat_messages WHERE id = ?", (message_id,))
     await db.commit()
@@ -87,6 +98,7 @@ async def delete_message(message_id: int):
 # --- Channel management ---
 
 async def create_channel(name: str, description: str, created_by: int) -> dict:
+    """Insert a new chat channel and return its id, name, and description."""
     db = await get_db()
     cursor = await db.execute(
         "INSERT INTO chat_channels (name, description, created_by) VALUES (?, ?, ?)",
@@ -97,6 +109,7 @@ async def create_channel(name: str, description: str, created_by: int) -> dict:
 
 
 async def list_channels() -> list[dict]:
+    """Return all chat channels ordered alphabetically by name."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT * FROM chat_channels ORDER BY name"
@@ -105,6 +118,7 @@ async def list_channels() -> list[dict]:
 
 
 async def get_channel(name: str) -> dict | None:
+    """Look up a chat channel by name, returning its data or None if not found."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT * FROM chat_channels WHERE name = ?", (name,)
@@ -114,6 +128,7 @@ async def get_channel(name: str) -> dict | None:
 
 
 async def delete_channel(channel_name: str):
+    """Delete a channel and all of its messages."""
     db = await get_db()
     await db.execute("DELETE FROM chat_messages WHERE channel = ?", (channel_name,))
     await db.execute("DELETE FROM chat_channels WHERE name = ?", (channel_name,))
@@ -126,15 +141,18 @@ _DM_RE = re.compile(r"^dm:(\d+):(\d+)$")
 
 
 def dm_channel_name(user_id_a: int, user_id_b: int) -> str:
+    """Build a canonical DM channel name from two user IDs, sorted low-to-high."""
     lo, hi = sorted((user_id_a, user_id_b))
     return f"dm:{lo}:{hi}"
 
 
 def is_dm_channel(channel: str) -> bool:
+    """Return True if the channel name matches the DM naming pattern."""
     return _DM_RE.match(channel) is not None
 
 
 def dm_participant_ids(channel: str) -> tuple[int, int] | None:
+    """Extract the two participant user IDs from a DM channel name, or return None if invalid."""
     m = _DM_RE.match(channel)
     if m:
         return int(m.group(1)), int(m.group(2))

@@ -1,3 +1,5 @@
+"""Manage the shared aiosqlite database connection and schema initialization."""
+
 import aiosqlite
 from lib import config
 
@@ -88,6 +90,11 @@ CREATE TABLE IF NOT EXISTS game_scores (
 
 
 async def get_db() -> aiosqlite.Connection:
+    """Return the shared database connection, creating it on first call.
+
+    Initialize the schema, enable WAL journal mode, and turn on foreign-key
+    enforcement when opening a new connection.
+    """
     global _db
     if _db is None:
         _db = await aiosqlite.connect(config.DB_PATH)
@@ -100,6 +107,7 @@ async def get_db() -> aiosqlite.Connection:
 
 
 async def close_db():
+    """Close the shared database connection and reset the module-level handle."""
     global _db
     if _db is not None:
         await _db.close()

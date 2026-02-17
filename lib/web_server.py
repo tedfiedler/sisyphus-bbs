@@ -1,3 +1,5 @@
+"""FastAPI application setup, static file mounting, template configuration, and route registration."""
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -10,6 +12,7 @@ templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 
 
 def _add_globals(request: Request, extra: dict | None = None) -> dict:
+    """Build a template context dict with the request and global BBS settings, merged with any extra values."""
     ctx = {"request": request, "bbs_name": config.BBS_NAME}
     if extra:
         ctx.update(extra)

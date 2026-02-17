@@ -1,3 +1,11 @@
+"""File upload and download routes.
+
+Enforces a file extension allowlist and a maximum upload size. Uploaded
+files are stored on disk under ``config.FILE_STORE`` and tracked in the
+database. Downloads validate that the stored path has not escaped the
+file store directory.
+"""
+
 from pathlib import Path
 
 from fastapi import APIRouter, Request, Form, UploadFile, File, Depends
@@ -22,6 +30,7 @@ ALLOWED_EXTENSIONS = {
 
 @router.get("/files", response_class=HTMLResponse)
 async def file_list(request: Request, area: str | None = None, user: dict = Depends(require_user)):
+    """List uploaded files, optionally filtered by area."""
     file_data = await file_mod.list_files(area)
     areas = await file_mod.list_areas()
     return templates.TemplateResponse(
@@ -37,6 +46,12 @@ async def file_upload(
     description: str = Form(""),
     user: dict = Depends(require_user),
 ):
+    """Upload a file after validating its extension and size.
+
+    Rejects files that exceed ``MAX_UPLOAD_BYTES`` or have an extension
+    not in ``ALLOWED_EXTENSIONS``. The filename and area are sanitized
+    by ``save_upload`` to prevent path traversal.
+    """
     # Validate file extension
     ext = Path(file.filename).suffix.lower() if file.filename else ""
     if ext not in ALLOWED_EXTENSIONS:
@@ -56,6 +71,7 @@ async def file_upload(
 
 @router.get("/files/download/{file_id}")
 async def file_download(request: Request, file_id: int, user: dict = Depends(require_user)):
+    """Serve a file for download after verifying the path is inside FILE_STORE."""
     f = await file_mod.get_file(file_id)
     if not f:
         return RedirectResponse("/files", status_code=302)

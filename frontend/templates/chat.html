@@ -1,52 +1,130 @@
 {% extends "base.html" %}
 {% block title %}Chat{% endblock %}
 {% block content %}
-<div class="box">
-    <h2>Chat - #lobby</h2>
-    <div id="chat-messages">
-        {% for msg in recent_messages %}
-        <div data-msg-id="{{ msg.id }}">
-            <span class="msg-time">[{{ msg.created_at }}]</span>
-            <span class="msg-user">&lt;{{ msg.username }}&gt;</span>
-            {{ msg.message }}
+<div id="chat-layout">
+    <div id="chat-sidebar">
+        <h3>Channels</h3>
+        <div class="channel-item{% if current_channel == 'lobby' %} active{% endif %}" onclick="switchChannel('lobby')"># lobby</div>
+        {% for ch in channels %}
+        <div class="channel-item{% if current_channel == ch.name %} active{% endif %}">
+            <span onclick="switchChannel('{{ ch.name }}')"># {{ ch.name }}</span>
             {% if user.access_level >= 1 %}
-            <form method="post" action="/admin/chat/{{ msg.id }}/delete" style="display:inline; margin-left: 5px;">
-                <button type="submit" class="btn-danger btn-small">Del</button>
+            <form method="post" action="/chat/channels/{{ ch.name }}/delete" style="display:inline; float:right;">
+                <button type="submit" class="btn-danger btn-small">x</button>
             </form>
             {% endif %}
         </div>
         {% endfor %}
+        {% if user.access_level >= 1 %}
+        <form method="post" action="/chat/channels/create" id="create-channel-form">
+            <input type="text" name="name" placeholder="new-channel" style="font-size:12px; padding:4px; margin-top:5px;">
+            <input type="hidden" name="description" value="">
+            <button type="submit" class="btn-small" style="margin-top:2px;">+ Channel</button>
+        </form>
+        {% endif %}
+
+        <h3>Direct Messages</h3>
+        {% for dm in dm_channels %}
+        <div class="channel-item{% if current_channel == dm.channel %} active{% endif %}" onclick="switchChannel('{{ dm.channel }}')">@ {{ dm.other_user.username }}</div>
+        {% endfor %}
+        {% if not dm_channels %}
+        <div class="meta" style="padding:4px 8px;">No conversations yet</div>
+        {% endif %}
+
+        <h3>Online Users</h3>
+        {% for ou in online_users %}
+        {% if ou.id != user.id %}
+        <div class="user-item" onclick="startDM({{ ou.id }})">{{ ou.username }}</div>
+        {% endif %}
+        {% endfor %}
     </div>
-    <div id="chat-input">
-        <input type="text" id="msg-input" placeholder="Type a message..." autofocus>
-        <button onclick="sendMessage()">Send</button>
+    <div id="chat-main">
+        <div class="box">
+            <h2 id="chat-heading">Chat - #{{ current_channel }}</h2>
+            <div id="chat-messages">
+                {% for msg in recent_messages %}
+                <div data-msg-id="{{ msg.id }}">
+                    <span class="msg-time">[{{ msg.created_at }}]</span>
+                    <span class="msg-user">&lt;{{ msg.username }}&gt;</span>
+                    {{ msg.message }}
+                    {% if user.access_level >= 1 %}
+                    <form method="post" action="/admin/chat/{{ msg.id }}/delete" style="display:inline; margin-left: 5px;">
+                        <button type="submit" class="btn-danger btn-small">Del</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div id="chat-input">
+                <input type="text" id="msg-input" placeholder="Type a message..." autofocus>
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-const ws = new WebSocket(`ws://${location.host}/ws/chat`);
 const msgDiv = document.getElementById('chat-messages');
 const msgInput = document.getElementById('msg-input');
-let connected = false;
-
-ws.onopen = () => {
-    connected = true;
-    // Clear pre-rendered messages once we get history from WS
-};
-
-ws.onmessage = (e) => {
-    const data = JSON.parse(e.data);
-    appendMessage(data);
-};
-
-ws.onclose = () => {
-    connected = false;
-    appendSystem('Disconnected from chat.');
-};
-
+const chatHeading = document.getElementById('chat-heading');
 const isAdmin = {{ 'true' if user.access_level >= 1 else 'false' }};
+let currentChannel = '{{ current_channel }}';
+let ws = null;
+let connected = false;
+let reconnectDelay = 1000;
+const MAX_RECONNECT_DELAY = 30000;
+
+function connect() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${location.host}/ws/chat`);
+
+    ws.onopen = () => {
+        connected = true;
+        reconnectDelay = 1000;
+        if (currentChannel !== 'lobby') {
+            ws.send(JSON.stringify({ type: 'switch', channel: currentChannel }));
+        }
+    };
+
+    ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'ping') {
+            ws.send(JSON.stringify({ type: 'pong' }));
+            return;
+        }
+        if (data.type === 'history') {
+            msgDiv.innerHTML = '';
+            for (const msg of data.messages) {
+                appendMessage(msg);
+            }
+            return;
+        }
+        if (data.type === 'error') {
+            appendSystem(data.message || 'Error');
+            return;
+        }
+        appendMessage(data);
+    };
+
+    ws.onclose = () => {
+        connected = false;
+        appendSystem('Disconnected. Reconnecting...');
+        scheduleReconnect();
+    };
+
+    ws.onerror = () => {
+        ws.close();
+    };
+}
+
+function scheduleReconnect() {
+    setTimeout(() => {
+        connect();
+        reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
+    }, reconnectDelay);
+}
 
 function appendMessage(data) {
     const div = document.createElement('div');
@@ -76,6 +154,33 @@ function sendMessage() {
     msgInput.value = '';
 }
 
+function switchChannel(name) {
+    if (name === currentChannel) return;
+    currentChannel = name;
+    chatHeading.textContent = 'Chat - #' + name;
+    // Update active sidebar item
+    document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+    // Find matching sidebar entry (by channel name in onclick or text)
+    document.querySelectorAll('.channel-item').forEach(el => {
+        const onclick = el.getAttribute('onclick') || '';
+        const spanOnclick = el.querySelector('span') ? (el.querySelector('span').getAttribute('onclick') || '') : '';
+        if (onclick.includes("'" + name + "'") || spanOnclick.includes("'" + name + "'")) {
+            el.classList.add('active');
+        }
+    });
+    if (connected) {
+        ws.send(JSON.stringify({ type: 'switch', channel: name }));
+    }
+}
+
+function startDM(userId) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/chat/dm/' + userId;
+    document.body.appendChild(form);
+    form.submit();
+}
+
 msgInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendMessage();
 });
@@ -85,5 +190,7 @@ function escapeHtml(s) {
     d.textContent = s;
     return d.innerHTML;
 }
+
+connect();
 </script>
 {% endblock %}

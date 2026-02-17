@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import datetime, timezone
 
 from lib.db import get_db
@@ -65,6 +66,110 @@ async def delete_message(message_id: int):
     db = await get_db()
     await db.execute("DELETE FROM chat_messages WHERE id = ?", (message_id,))
     await db.commit()
+
+
+# --- Channel management ---
+
+async def create_channel(name: str, description: str, created_by: int) -> dict:
+    db = await get_db()
+    cursor = await db.execute(
+        "INSERT INTO chat_channels (name, description, created_by) VALUES (?, ?, ?)",
+        (name, description, created_by),
+    )
+    await db.commit()
+    return {"id": cursor.lastrowid, "name": name, "description": description}
+
+
+async def list_channels() -> list[dict]:
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT * FROM chat_channels ORDER BY name"
+    )
+    return [dict(r) for r in await cursor.fetchall()]
+
+
+async def get_channel(name: str) -> dict | None:
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT * FROM chat_channels WHERE name = ?", (name,)
+    )
+    row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def delete_channel(channel_name: str):
+    db = await get_db()
+    await db.execute("DELETE FROM chat_messages WHERE channel = ?", (channel_name,))
+    await db.execute("DELETE FROM chat_channels WHERE name = ?", (channel_name,))
+    await db.commit()
+
+
+# --- DM helpers ---
+
+_DM_RE = re.compile(r"^dm:(\d+):(\d+)$")
+
+
+def dm_channel_name(user_id_a: int, user_id_b: int) -> str:
+    lo, hi = sorted((user_id_a, user_id_b))
+    return f"dm:{lo}:{hi}"
+
+
+def is_dm_channel(channel: str) -> bool:
+    return _DM_RE.match(channel) is not None
+
+
+def dm_participant_ids(channel: str) -> tuple[int, int] | None:
+    m = _DM_RE.match(channel)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    return None
+
+
+async def list_dm_channels_for_user(user_id: int) -> list[dict]:
+    """Return DM channels this user participates in, with the other user's info."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT DISTINCT channel FROM chat_messages
+           WHERE channel LIKE 'dm:%' AND (
+               channel LIKE '%:' || ? || ':%' OR
+               channel LIKE 'dm:' || ? || ':%' OR
+               channel LIKE '%:' || ?
+           )
+           ORDER BY channel""",
+        (user_id, user_id, user_id),
+    )
+    rows = await cursor.fetchall()
+    results = []
+    for row in rows:
+        ch = row["channel"]
+        ids = dm_participant_ids(ch)
+        if ids and user_id in ids:
+            other_id = ids[0] if ids[1] == user_id else ids[1]
+            user_cursor = await db.execute(
+                "SELECT id, username FROM users WHERE id = ?", (other_id,)
+            )
+            other = await user_cursor.fetchone()
+            if other:
+                results.append({"channel": ch, "other_user": dict(other)})
+    return results
+
+
+async def validate_channel(channel: str, user_id: int) -> str | None:
+    """Return None if valid, or an error message string."""
+    if channel == "lobby":
+        return None
+    if is_dm_channel(channel):
+        ids = dm_participant_ids(channel)
+        if ids is None:
+            return "Invalid DM channel"
+        if user_id not in ids:
+            return "You are not a participant in this DM"
+        return None
+    # Named channel — must exist in db
+    ch = await get_channel(channel)
+    if ch is None:
+        return "Channel does not exist"
+    return None
 
 
 chat_manager = ChatManager()

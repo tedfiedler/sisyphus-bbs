@@ -220,3 +220,63 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
     font-weight: bold;
     margin-left: 3px;
 }
+
+/* Chat sidebar layout */
+#chat-layout {
+    display: flex;
+    gap: 15px;
+}
+
+#chat-sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    padding: 10px;
+}
+
+#chat-sidebar h3 {
+    color: var(--accent);
+    font-size: 11px;
+    text-transform: uppercase;
+    margin: 12px 0 5px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid var(--border);
+}
+
+#chat-sidebar h3:first-child {
+    margin-top: 0;
+}
+
+#chat-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.channel-item {
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--dim);
+}
+
+.channel-item:hover {
+    color: var(--fg);
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.channel-item.active {
+    color: var(--fg);
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.user-item {
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--dim);
+}
+
+.user-item:hover {
+    color: var(--accent);
+    background: rgba(0, 191, 255, 0.05);
+}

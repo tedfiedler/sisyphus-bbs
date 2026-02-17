@@ -146,14 +146,22 @@ async def delete_user(user_id: int):
     await db.commit()
 
 
+async def update_last_seen(user_id: int):
+    """Update the last_seen timestamp for a user to the current time."""
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?", (user_id,)
+    )
+    await db.commit()
+
+
 async def list_online_users() -> list[dict]:
-    """Return users with non-expired sessions (excluding duplicates)."""
+    """Return users seen within the last 5 minutes."""
     db = await get_db()
     cursor = await db.execute(
-        """SELECT DISTINCT u.id, u.username
-           FROM sessions s JOIN users u ON s.user_id = u.id
-           WHERE s.expires_at > ?
-           ORDER BY u.username""",
-        (datetime.now(timezone.utc).isoformat(),),
+        """SELECT id, username, last_seen
+           FROM users
+           WHERE last_seen > datetime('now', '-5 minutes')
+           ORDER BY username"""
     )
     return [dict(r) for r in await cursor.fetchall()]

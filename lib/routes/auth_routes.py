@@ -7,11 +7,12 @@ per-IP rate limiting on the login endpoint to mitigate brute-force attacks.
 import time
 from collections import defaultdict
 
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from lib import config
 from lib import auth
+from lib.deps import require_user
 from lib.web_server import templates, _add_globals
 
 router = APIRouter()
@@ -94,6 +95,15 @@ async def login(request: Request, username: str = Form(), password: str = Form()
     is_https = request.url.scheme == "https"
     resp.set_cookie("session_token", token, httponly=True, secure=is_https, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
     return resp
+
+
+@router.get("/online", response_class=HTMLResponse)
+async def online(request: Request, user: dict = Depends(require_user)):
+    """Show all currently online users (seen within the last 5 minutes)."""
+    online_users = await auth.list_online_users()
+    return templates.TemplateResponse(
+        "online.html", _add_globals(request, {"user": user, "online_users": online_users})
+    )
 
 
 @router.get("/logout")

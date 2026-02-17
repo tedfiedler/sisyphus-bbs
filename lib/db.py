@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
-    access_level INTEGER DEFAULT 0
+    access_level INTEGER DEFAULT 0,
+    last_seen TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS boards (
@@ -89,6 +90,14 @@ CREATE TABLE IF NOT EXISTS game_scores (
 """
 
 
+async def _migrate(db: aiosqlite.Connection):
+    """Run lightweight migrations for columns added after initial schema creation."""
+    cursor = await db.execute("PRAGMA table_info(users)")
+    columns = {row[1] for row in await cursor.fetchall()}
+    if "last_seen" not in columns:
+        await db.execute("ALTER TABLE users ADD COLUMN last_seen TIMESTAMP")
+
+
 async def get_db() -> aiosqlite.Connection:
     """Return the shared database connection, creating it on first call.
 
@@ -100,6 +109,7 @@ async def get_db() -> aiosqlite.Connection:
         _db = await aiosqlite.connect(config.DB_PATH)
         _db.row_factory = aiosqlite.Row
         await _db.executescript(SCHEMA)
+        await _migrate(_db)
         await _db.execute("PRAGMA journal_mode=WAL")
         await _db.execute("PRAGMA foreign_keys=ON")
         await _db.commit()

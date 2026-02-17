@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Who's Online{% endblock %}
+{% block content %}
+<div class="box">
+    <h2>Who's Online</h2>
+    {% if online_users %}
+    <p>{{ online_users | length }} user{{ 's' if online_users | length != 1 else '' }} online:</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ou in online_users %}
+            <tr>
+                <td>{{ ou.username }}</td>
+                <td class="meta">{{ ou.last_seen }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="meta">No users are currently online.</p>
+    {% endif %}
+</div>
+{% endblock %}

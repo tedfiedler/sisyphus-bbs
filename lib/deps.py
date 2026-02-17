@@ -18,6 +18,7 @@ async def require_user(request: Request) -> dict:
     user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=302, headers={"Location": "/"})
+    await auth.update_last_seen(user["id"])
     return user
 
 

@@ -158,6 +158,24 @@
 </div>
 {% endif %}
 
+{% if high_scores %}
+<div class="box">
+    <h2>High Scores</h2>
+    <table>
+        <tr><th>#</th><th>Player</th><th>Best Score</th><th>W / L</th><th>Games</th></tr>
+        {% for hs in high_scores %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ hs.username }}</td>
+            <td style="color:var(--accent);font-weight:bold">{{ hs.best_score }}</td>
+            <td>{{ hs.wins }} / {{ hs.games_played - hs.wins }}</td>
+            <td>{{ hs.games_played }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
 {% if online_users %}
 <div class="box">
     <h2>Online Players</h2>

@@ -5,6 +5,8 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
+from lib.db import get_db
+
 # Hazard -> Remedy
 REMEDY_FOR = {
     "Accident": "Repairs",
@@ -269,6 +271,7 @@ class GameState:
     messages: list = field(default_factory=list)
     winner: str | None = None
     coup_fourre_pending: str | None = None  # hazard name if awaiting player decision
+    score_saved: bool = False
 
 
 _games: dict[int, GameState] = {}  # keyed by user_id
@@ -376,6 +379,7 @@ class PvpGameState:
     winner: str | None = None
     coup_fourre_pending: int | None = None    # user_id who can respond
     coup_fourre_hazard: str | None = None     # hazard name
+    score_saved: bool = False
 
 
 _pvp_games: dict[str, PvpGameState] = {}  # game_id -> state
@@ -424,3 +428,32 @@ def get_me_and_opponent(game: PvpGameState, user_id: int) -> tuple[Player, Playe
     if user_id == game.player1_id:
         return game.player1, game.player2, game.player1_id, game.player2_id
     return game.player2, game.player1, game.player2_id, game.player1_id
+
+
+# ---------------------------------------------------------------------------
+# Score persistence
+# ---------------------------------------------------------------------------
+
+async def save_score(user_id: int, score: int, opponent: str, won: bool):
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO game_scores (user_id, score, opponent, won) VALUES (?, ?, ?, ?)",
+        (user_id, score, opponent, int(won)),
+    )
+    await db.commit()
+
+
+async def get_high_scores() -> list[dict]:
+    """Return the best score for each player, ordered by score descending."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT u.username,
+                  MAX(gs.score) AS best_score,
+                  COUNT(*) AS games_played,
+                  SUM(gs.won) AS wins
+           FROM game_scores gs
+           JOIN users u ON gs.user_id = u.id
+           GROUP BY gs.user_id
+           ORDER BY best_score DESC""",
+    )
+    return [dict(r) for r in await cursor.fetchall()]

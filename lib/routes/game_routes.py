@@ -15,6 +15,8 @@ from lib.mille import (
     set_flash, pop_flash, expire_invites, INVITE_TIMEOUT,
     # PvP
     new_pvp_game, get_pvp_game, remove_pvp_game, get_me_and_opponent,
+    # Scores
+    save_score, get_high_scores,
 )
 
 router = APIRouter()
@@ -132,6 +134,10 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
         if pvp.winner:
             my_score = calc_score(me, opp, pvp.winner)
             opp_score = calc_score(opp, me, pvp.winner)
+            if not pvp.score_saved:
+                pvp.score_saved = True
+                await save_score(pvp.player1_id, calc_score(pvp.player1, pvp.player2, pvp.winner), pvp.player2.name, pvp.winner == pvp.player1.name)
+                await save_score(pvp.player2_id, calc_score(pvp.player2, pvp.player1, pvp.winner), pvp.player1.name, pvp.winner == pvp.player2.name)
             return templates.TemplateResponse(
                 "mille.html",
                 _add_globals(request, {
@@ -190,6 +196,9 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
         if game.winner:
             human_score = calc_score(game.human, game.cpu, game.winner)
             cpu_score = calc_score(game.cpu, game.human, game.winner)
+            if not game.score_saved:
+                game.score_saved = True
+                await save_score(uid, human_score, "CPU", game.winner == game.human.name)
             return templates.TemplateResponse(
                 "mille.html",
                 _add_globals(request, {
@@ -259,6 +268,7 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
         available.append(u)
 
     incoming = get_invite_to(uid)
+    high_scores = await get_high_scores()
 
     return templates.TemplateResponse(
         "mille.html",
@@ -268,6 +278,7 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
             "online_users": available,
             "incoming_invite": incoming,
             "flash": flash,
+            "high_scores": high_scores,
         }),
     )
 

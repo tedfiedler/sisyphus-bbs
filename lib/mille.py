@@ -457,17 +457,17 @@ def get_me_and_opponent(game: PvpGameState, user_id: int) -> tuple[Player, Playe
 # Score persistence
 # ---------------------------------------------------------------------------
 
-async def save_score(user_id: int, score: int, opponent: str, won: bool):
+async def save_score(user_id: int, score: int, opponent: str, won: bool, game: str = "mille"):
     """Persist a game score to the database."""
     db = await get_db()
     await db.execute(
-        "INSERT INTO game_scores (user_id, score, opponent, won) VALUES (?, ?, ?, ?)",
-        (user_id, score, opponent, int(won)),
+        "INSERT INTO game_scores (user_id, score, opponent, won, game) VALUES (?, ?, ?, ?, ?)",
+        (user_id, score, opponent, int(won), game),
     )
     await db.commit()
 
 
-async def get_high_scores() -> list[dict]:
+async def get_high_scores(game: str = "mille") -> list[dict]:
     """Return the best score for each player, ordered by score descending."""
     db = await get_db()
     cursor = await db.execute(
@@ -477,7 +477,9 @@ async def get_high_scores() -> list[dict]:
                   SUM(gs.won) AS wins
            FROM game_scores gs
            JOIN users u ON gs.user_id = u.id
+           WHERE gs.game = ?
            GROUP BY gs.user_id
            ORDER BY best_score DESC""",
+        (game,),
     )
     return [dict(r) for r in await cursor.fetchall()]

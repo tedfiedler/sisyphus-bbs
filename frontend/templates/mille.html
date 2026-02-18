@@ -130,7 +130,7 @@
         Race to 1000 miles! Play distance cards to advance, hazards to slow your opponent, and safeties for protection.<br>
         You must play <strong>Roll</strong> before you can drive. Max two <strong>200 mi</strong> cards per game.
     </p>
-    <form method="post" action="/mille/new" style="margin-top:12px">
+    <form method="post" action="/games/mille/new" style="margin-top:12px">
         <button type="submit">Play vs CPU</button>
     </form>
 </div>
@@ -146,11 +146,11 @@
     <h2>Incoming Challenge</h2>
     <p><strong style="color:var(--accent)">{{ incoming_invite.from_username }}</strong> wants to play!</p>
     <div style="display:flex;gap:8px;margin-top:10px">
-        <form method="post" action="/mille/invite/accept">
+        <form method="post" action="/games/mille/invite/accept">
             <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
             <button type="submit">Accept</button>
         </form>
-        <form method="post" action="/mille/invite/decline">
+        <form method="post" action="/games/mille/invite/decline">
             <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
             <button type="submit" style="background:var(--border);color:var(--fg)">Decline</button>
         </form>
@@ -185,7 +185,7 @@
         <tr>
             <td>{{ u.username }}</td>
             <td>
-                <form method="post" action="/mille/invite" style="display:inline">
+                <form method="post" action="/games/mille/invite" style="display:inline">
                     <input type="hidden" name="to_user_id" value="{{ u.id }}">
                     <button type="submit" class="btn-small">Challenge</button>
                 </form>
@@ -204,7 +204,7 @@
     <h2>Mille Bornes &mdash; Challenge Sent</h2>
     <p>Waiting for <strong style="color:var(--accent)">{{ invite.to_username }}</strong> to accept your challenge...</p>
     <p class="meta">Expires in {{ remaining }}s</p>
-    <form method="post" action="/mille/invite/cancel" style="margin-top:10px">
+    <form method="post" action="/games/mille/invite/cancel" style="margin-top:10px">
         <button type="submit" style="background:var(--border);color:var(--fg)">Cancel</button>
     </form>
 </div>
@@ -225,11 +225,11 @@
     <h2>Coup Fourr&eacute;!</h2>
     <p>The CPU played a hazard, but you have <strong style="color:var(--accent)">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
     <div style="display:flex;gap:8px;margin-top:10px">
-        <form method="post" action="/mille/coup">
+        <form method="post" action="/games/mille/coup">
             <input type="hidden" name="accept" value="yes">
             <button type="submit">Yes &mdash; Play it!</button>
         </form>
-        <form method="post" action="/mille/coup">
+        <form method="post" action="/games/mille/coup">
             <input type="hidden" name="accept" value="no">
             <button type="submit" style="background:var(--border);color:var(--fg)">No &mdash; Decline</button>
         </form>
@@ -241,7 +241,7 @@
 {# ── CPU Active Game ── #}
 {{ player_status_table(game.human, "You", game.cpu, "CPU", game.deck|length) }}
 {{ message_box(game.messages) }}
-{{ hand_display(game.human.hand, playable, "/mille/play", "/mille/discard") }}
+{{ hand_display(game.human.hand, playable, "/games/mille/play", "/games/mille/discard") }}
 
 
 {% elif state == "game_over" %}
@@ -267,7 +267,7 @@
 {{ scoring_table(game.human, "You", game.cpu, "CPU", human_score, cpu_score, game.winner) }}
 
 <div class="box">
-    <form method="post" action="/mille/new" style="margin-top:0">
+    <form method="post" action="/games/mille/new" style="margin-top:0">
         <button type="submit">Play Again</button>
     </form>
 </div>
@@ -277,10 +277,10 @@
 {# ── PvP: Your Turn ── #}
 {{ player_status_table(me, "You", opp, opp.name, game.deck|length) }}
 {{ message_box(game.messages) }}
-{{ hand_display(me.hand, playable, "/mille/pvp/play", "/mille/pvp/discard") }}
+{{ hand_display(me.hand, playable, "/games/mille/pvp/play", "/games/mille/pvp/discard") }}
 
 <div class="box">
-    <form method="post" action="/mille/pvp/quit">
+    <form method="post" action="/games/mille/pvp/quit">
         <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
     </form>
 </div>
@@ -297,7 +297,7 @@
 </div>
 
 <div class="box">
-    <form method="post" action="/mille/pvp/quit">
+    <form method="post" action="/games/mille/pvp/quit">
         <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
     </form>
 </div>
@@ -312,11 +312,11 @@
     <h2>Coup Fourr&eacute;!</h2>
     <p><strong>{{ opp.name }}</strong> played a hazard, but you have <strong style="color:var(--accent)">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
     <div style="display:flex;gap:8px;margin-top:10px">
-        <form method="post" action="/mille/pvp/coup">
+        <form method="post" action="/games/mille/pvp/coup">
             <input type="hidden" name="accept" value="yes">
             <button type="submit">Yes &mdash; Play it!</button>
         </form>
-        <form method="post" action="/mille/pvp/coup">
+        <form method="post" action="/games/mille/pvp/coup">
             <input type="hidden" name="accept" value="no">
             <button type="submit" style="background:var(--border);color:var(--fg)">No &mdash; Decline</button>
         </form>
@@ -347,7 +347,7 @@
 {{ scoring_table(me, "You", opp, opp.name, my_score, opp_score, game.winner) }}
 
 <div class="box">
-    <form method="post" action="/mille/pvp/quit">
+    <form method="post" action="/games/mille/pvp/quit">
         <button type="submit">Back to Lobby</button>
     </form>
 </div>

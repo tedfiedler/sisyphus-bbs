@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS game_scores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
+    game TEXT NOT NULL DEFAULT 'mille',
     score INTEGER NOT NULL,
     opponent TEXT NOT NULL,
     won INTEGER NOT NULL DEFAULT 0,
@@ -130,6 +131,11 @@ async def _migrate(db: aiosqlite.Connection):
         await db.execute("ALTER TABLE users ADD COLUMN last_dm_seen TIMESTAMP")
     if "file_upload_allowed" not in columns:
         await db.execute("ALTER TABLE users ADD COLUMN file_upload_allowed INTEGER DEFAULT 0")
+
+    cursor = await db.execute("PRAGMA table_info(game_scores)")
+    gs_columns = {row[1] for row in await cursor.fetchall()}
+    if "game" not in gs_columns:
+        await db.execute("ALTER TABLE game_scores ADD COLUMN game TEXT NOT NULL DEFAULT 'mille'")
 
 
 async def get_db() -> aiosqlite.Connection:

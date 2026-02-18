@@ -28,6 +28,33 @@ from lib.mille import (
 
 router = APIRouter()
 
+GAMES = [
+    {"name": "Mille Bornes", "url": "/games/mille", "description": "Race to 1000 miles with cards — play distance, dodge hazards, and use safeties!"},
+]
+
+
+# ---------------------------------------------------------------------------
+# Games index
+# ---------------------------------------------------------------------------
+
+@router.get("/games", response_class=HTMLResponse)
+async def games_index(request: Request, user: dict = Depends(require_user)):
+    """Render the games index page listing all available games."""
+    return templates.TemplateResponse(
+        "games.html",
+        _add_globals(request, {"user": user, "games": GAMES}),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Backward-compat redirect: /mille -> /games/mille
+# ---------------------------------------------------------------------------
+
+@router.get("/mille")
+async def mille_redirect():
+    """Redirect old /mille URL to the new /games/mille path."""
+    return RedirectResponse("/games/mille", status_code=302)
+
 
 # ---------------------------------------------------------------------------
 # CPU game helpers (unchanged)
@@ -121,10 +148,10 @@ def _check_pvp_game_over(game):
 
 
 # ---------------------------------------------------------------------------
-# GET /mille — unified entry point
+# GET /games/mille — unified entry point
 # ---------------------------------------------------------------------------
 
-@router.get("/mille", response_class=HTMLResponse)
+@router.get("/games/mille", response_class=HTMLResponse)
 async def mille_page(request: Request, user: dict = Depends(require_user)):
     """Render the appropriate Mille Bornes view based on the user's current game state.
 
@@ -305,21 +332,21 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
 # CPU game routes (unchanged)
 # ---------------------------------------------------------------------------
 
-@router.post("/mille/new")
+@router.post("/games/mille/new")
 async def mille_new(request: Request, user: dict = Depends(require_user)):
     """Start a new CPU game. Cancel any pending invite and remove old games."""
     uid = user["id"]
     # Don't allow starting CPU game while in PvP
     if get_pvp_game(uid):
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
     # Cancel any pending invite
     cancel_invite(uid)
     remove_game(uid)
     new_game(uid)
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/play")
+@router.post("/games/mille/play")
 async def mille_play(
     request: Request,
     card_index: int = Form(),
@@ -328,15 +355,15 @@ async def mille_play(
     """Play a card from the human player's hand in a CPU game."""
     game = get_game(user["id"])
     if not game or game.winner or game.coup_fourre_pending:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     if card_index < 0 or card_index >= len(game.human.hand):
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     card = game.human.hand[card_index]
     if not can_play(card, game.human, game.cpu):
         game.messages = [f"Can't play {card_name(card)} right now."]
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     game.human.hand.pop(card_index)
     msg = do_play(card, game.human, game.cpu)
@@ -356,10 +383,10 @@ async def mille_play(
     if not game.winner and not game.coup_fourre_pending and game.deck:
         game.human.hand.append(game.deck.pop())
 
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/discard")
+@router.post("/games/mille/discard")
 async def mille_discard(
     request: Request,
     card_index: int = Form(),
@@ -368,10 +395,10 @@ async def mille_discard(
     """Discard a card from the human player's hand in a CPU game."""
     game = get_game(user["id"])
     if not game or game.winner or game.coup_fourre_pending:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     if card_index < 0 or card_index >= len(game.human.hand):
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     card = game.human.hand.pop(card_index)
     game.messages = [f"You discard {card_name(card)}."]
@@ -384,10 +411,10 @@ async def mille_discard(
     if not game.winner and not game.coup_fourre_pending and game.deck:
         game.human.hand.append(game.deck.pop())
 
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/coup")
+@router.post("/games/mille/coup")
 async def mille_coup(
     request: Request,
     accept: str = Form(),
@@ -396,7 +423,7 @@ async def mille_coup(
     """Accept or decline a coup fourre opportunity in a CPU game."""
     game = get_game(user["id"])
     if not game or not game.coup_fourre_pending:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     hazard_name = game.coup_fourre_pending
     game.coup_fourre_pending = None
@@ -411,14 +438,14 @@ async def mille_coup(
     if not game.winner and game.deck:
         game.human.hand.append(game.deck.pop())
 
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
 # ---------------------------------------------------------------------------
 # Invite routes
 # ---------------------------------------------------------------------------
 
-@router.post("/mille/invite")
+@router.post("/games/mille/invite")
 async def mille_invite(
     request: Request,
     to_user_id: int = Form(),
@@ -428,32 +455,32 @@ async def mille_invite(
     uid = user["id"]
     # Can't invite while in a game
     if get_pvp_game(uid) or get_game(uid):
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     # Target must not be in a game or have a pending outgoing invite
     if get_pvp_game(to_user_id) or get_game(to_user_id):
         set_flash(uid, "That player is already in a game.")
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     # Cancel any existing outgoing invite from this user
     cancel_invite(uid)
 
     target = await auth.get_user(to_user_id)
     if not target:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     create_invite(uid, user["username"], to_user_id, target["username"])
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/invite/cancel")
+@router.post("/games/mille/invite/cancel")
 async def mille_invite_cancel(request: Request, user: dict = Depends(require_user)):
     """Cancel the current user's outgoing PvP invitation."""
     cancel_invite(user["id"])
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/invite/accept")
+@router.post("/games/mille/invite/accept")
 async def mille_invite_accept(
     request: Request,
     from_user_id: int = Form(),
@@ -463,12 +490,12 @@ async def mille_invite_accept(
     uid = user["id"]
     inv = get_invite_from(from_user_id)
     if not inv or inv.to_user_id != uid:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     # Don't accept if either player is already in a game
     if get_pvp_game(uid) or get_pvp_game(from_user_id):
         cancel_invite(from_user_id)
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     # Remove any CPU games either player has
     remove_game(uid)
@@ -477,10 +504,10 @@ async def mille_invite_accept(
     # Create PvP game — inviter is player1 (goes first)
     cancel_invite(from_user_id)
     new_pvp_game(from_user_id, inv.from_username, uid, inv.to_username)
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/invite/decline")
+@router.post("/games/mille/invite/decline")
 async def mille_invite_decline(
     request: Request,
     from_user_id: int = Form(),
@@ -490,18 +517,18 @@ async def mille_invite_decline(
     uid = user["id"]
     inv = get_invite_from(from_user_id)
     if not inv or inv.to_user_id != uid:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     cancel_invite(from_user_id)
     set_flash(from_user_id, f"{user['username']} declined your challenge.")
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
 # ---------------------------------------------------------------------------
 # PvP game routes
 # ---------------------------------------------------------------------------
 
-@router.post("/mille/pvp/play")
+@router.post("/games/mille/pvp/play")
 async def mille_pvp_play(
     request: Request,
     card_index: int = Form(),
@@ -511,17 +538,17 @@ async def mille_pvp_play(
     uid = user["id"]
     pvp = get_pvp_game(uid)
     if not pvp or pvp.winner or pvp.current_turn != uid or pvp.coup_fourre_pending:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     me, opp, my_id, opp_id = get_me_and_opponent(pvp, uid)
 
     if card_index < 0 or card_index >= len(me.hand):
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     card = me.hand[card_index]
     if not can_play(card, me, opp):
         pvp.messages = [f"Can't play {card_name(card)} right now."]
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     me.hand.pop(card_index)
     msg = do_play(card, me, opp)
@@ -534,7 +561,7 @@ async def mille_pvp_play(
         if ("safety", safety) in opp.hand:
             pvp.coup_fourre_pending = opp_id
             pvp.coup_fourre_hazard = card[1]
-            return RedirectResponse("/mille", status_code=302)
+            return RedirectResponse("/games/mille", status_code=302)
 
     # Switch turns and draw for next player
     if not pvp.winner:
@@ -542,10 +569,10 @@ async def mille_pvp_play(
         if pvp.deck:
             opp.hand.append(pvp.deck.pop())
 
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/pvp/discard")
+@router.post("/games/mille/pvp/discard")
 async def mille_pvp_discard(
     request: Request,
     card_index: int = Form(),
@@ -555,12 +582,12 @@ async def mille_pvp_discard(
     uid = user["id"]
     pvp = get_pvp_game(uid)
     if not pvp or pvp.winner or pvp.current_turn != uid or pvp.coup_fourre_pending:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     me, opp, my_id, opp_id = get_me_and_opponent(pvp, uid)
 
     if card_index < 0 or card_index >= len(me.hand):
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     card = me.hand.pop(card_index)
     pvp.messages = [f"{me.name} discards a card."]
@@ -572,10 +599,10 @@ async def mille_pvp_discard(
         if pvp.deck:
             opp.hand.append(pvp.deck.pop())
 
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/pvp/coup")
+@router.post("/games/mille/pvp/coup")
 async def mille_pvp_coup(
     request: Request,
     accept: str = Form(),
@@ -585,7 +612,7 @@ async def mille_pvp_coup(
     uid = user["id"]
     pvp = get_pvp_game(uid)
     if not pvp or pvp.coup_fourre_pending != uid:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     me, opp, my_id, opp_id = get_me_and_opponent(pvp, uid)
     hazard_name = pvp.coup_fourre_hazard
@@ -608,16 +635,16 @@ async def mille_pvp_coup(
 
     _check_pvp_game_over(pvp)
 
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)
 
 
-@router.post("/mille/pvp/quit")
+@router.post("/games/mille/pvp/quit")
 async def mille_pvp_quit(request: Request, user: dict = Depends(require_user)):
     """Forfeit the current PvP game. The opponent wins by default."""
     uid = user["id"]
     pvp = get_pvp_game(uid)
     if not pvp:
-        return RedirectResponse("/mille", status_code=302)
+        return RedirectResponse("/games/mille", status_code=302)
 
     if not pvp.winner:
         me, opp, my_id, opp_id = get_me_and_opponent(pvp, uid)
@@ -625,4 +652,4 @@ async def mille_pvp_quit(request: Request, user: dict = Depends(require_user)):
         pvp.winner = opp.name
 
     remove_pvp_game(pvp.game_id)
-    return RedirectResponse("/mille", status_code=302)
+    return RedirectResponse("/games/mille", status_code=302)

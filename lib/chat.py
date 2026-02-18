@@ -206,4 +206,19 @@ async def validate_channel(channel: str, user_id: int) -> str | None:
     return None
 
 
+async def has_dms_for_user(user_id: int) -> bool:
+    """Return True if the user has any DM messages."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT 1 FROM chat_messages
+           WHERE channel LIKE 'dm:%' AND (
+               channel LIKE '%:' || ? || ':%' OR
+               channel LIKE 'dm:' || ? || ':%' OR
+               channel LIKE '%:' || ?
+           ) LIMIT 1""",
+        (user_id, user_id, user_id),
+    )
+    return await cursor.fetchone() is not None
+
+
 chat_manager = ChatManager()

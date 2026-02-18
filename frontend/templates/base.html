@@ -21,7 +21,7 @@
             {% if user.access_level >= 1 %}
             <a href="/admin">Admin</a>
             {% endif %}
-            <span class="meta">[ {% if has_unread_pm is defined and has_unread_pm %}<span style="color: red;">*</span>{% endif %}<a href="/user/{{ user.id }}">{{ user.username }}</a>{% if user.access_level == 2 %} <span class="admin-badge">SUPER</span>{% elif user.access_level == 1 %} <span class="admin-badge">ADMIN</span>{% endif %} ]</span>
+            <span class="meta">[ {% if has_unread_dm %}<span style="color: red;">*</span>{% endif %}<a href="/user/{{ user.id }}">{{ user.username }}</a>{% if user.access_level == 2 %} <span class="admin-badge">SUPER</span>{% elif user.access_level == 1 %} <span class="admin-badge">ADMIN</span>{% endif %} ]</span>
             <a href="/logout">Logout</a>
         </nav>
     </header>

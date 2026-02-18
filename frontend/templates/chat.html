@@ -25,7 +25,7 @@
 
         <h3>Direct Messages</h3>
         {% for dm in dm_channels %}
-        <div class="channel-item{% if current_channel == dm.channel %} active{% endif %}" onclick="switchChannel('{{ dm.channel }}')">@ {{ dm.other_user.username }}</div>
+        <div class="channel-item{% if current_channel == dm.channel %} active{% endif %}" onclick="switchChannel('{{ dm.channel }}')" data-channel="{{ dm.channel }}" {% if dm.channel in unread_dm_channels %}style="color: red;"{% endif %}>@ {{ dm.other_user.username }}</div>
         {% endfor %}
         {% if not dm_channels %}
         <div class="meta" style="padding:4px 8px;">No conversations yet</div>
@@ -192,6 +192,12 @@ function switchChannel(name) {
             el.classList.add('active');
         }
     });
+    // Clear unread highlight when opening a DM channel
+    if (name.startsWith('dm:')) {
+        document.querySelectorAll('.channel-item[data-channel="' + name + '"]').forEach(el => {
+            el.style.color = '';
+        });
+    }
     if (connected) {
         ws.send(JSON.stringify({ type: 'switch', channel: name }));
     }

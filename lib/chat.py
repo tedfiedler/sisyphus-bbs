@@ -207,41 +207,47 @@ async def validate_channel(channel: str, user_id: int) -> str | None:
 
 
 async def has_unread_dms(user_id: int) -> bool:
-    """Return True if the user has DM messages newer than their last_dm_seen timestamp."""
+    """Return True if the user has any DM channel with unread messages."""
     db = await get_db()
     cursor = await db.execute(
-        "SELECT last_dm_seen FROM users WHERE id = ?", (user_id,)
+        """SELECT 1 FROM chat_messages cm
+           WHERE cm.channel LIKE 'dm:%'
+             AND (cm.channel LIKE '%:' || ? || ':%' OR cm.channel LIKE 'dm:' || ? || ':%' OR cm.channel LIKE '%:' || ?)
+             AND cm.user_id != ?
+             AND cm.created_at > COALESCE(
+                 (SELECT dcs.last_seen_at FROM dm_channel_seen dcs WHERE dcs.user_id = ? AND dcs.channel = cm.channel),
+                 '1970-01-01'
+             )
+           LIMIT 1""",
+        (user_id, user_id, user_id, user_id, user_id),
     )
-    row = await cursor.fetchone()
-    last_seen = row["last_dm_seen"] if row else None
-    if last_seen:
-        cursor = await db.execute(
-            """SELECT 1 FROM chat_messages
-               WHERE channel LIKE 'dm:%' AND (
-                   channel LIKE '%:' || ? || ':%' OR
-                   channel LIKE 'dm:' || ? || ':%' OR
-                   channel LIKE '%:' || ?
-               ) AND created_at > ? LIMIT 1""",
-            (user_id, user_id, user_id, last_seen),
-        )
-    else:
-        cursor = await db.execute(
-            """SELECT 1 FROM chat_messages
-               WHERE channel LIKE 'dm:%' AND (
-                   channel LIKE '%:' || ? || ':%' OR
-                   channel LIKE 'dm:' || ? || ':%' OR
-                   channel LIKE '%:' || ?
-               ) LIMIT 1""",
-            (user_id, user_id, user_id),
-        )
     return await cursor.fetchone() is not None
 
 
-async def mark_dms_seen(user_id: int):
-    """Update the user's last_dm_seen timestamp to now."""
+async def get_unread_dm_channels(user_id: int) -> set[str]:
+    """Return the set of DM channel names that have unread messages for the user."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT DISTINCT cm.channel FROM chat_messages cm
+           WHERE cm.channel LIKE 'dm:%'
+             AND (cm.channel LIKE '%:' || ? || ':%' OR cm.channel LIKE 'dm:' || ? || ':%' OR cm.channel LIKE '%:' || ?)
+             AND cm.user_id != ?
+             AND cm.created_at > COALESCE(
+                 (SELECT dcs.last_seen_at FROM dm_channel_seen dcs WHERE dcs.user_id = ? AND dcs.channel = cm.channel),
+                 '1970-01-01'
+             )""",
+        (user_id, user_id, user_id, user_id, user_id),
+    )
+    return {row["channel"] for row in await cursor.fetchall()}
+
+
+async def mark_dm_channel_seen(user_id: int, channel: str):
+    """Mark a specific DM channel as seen for the user."""
     db = await get_db()
     await db.execute(
-        "UPDATE users SET last_dm_seen = CURRENT_TIMESTAMP WHERE id = ?", (user_id,)
+        """INSERT INTO dm_channel_seen (user_id, channel, last_seen_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(user_id, channel) DO UPDATE SET last_seen_at = CURRENT_TIMESTAMP""",
+        (user_id, channel),
     )
     await db.commit()
 

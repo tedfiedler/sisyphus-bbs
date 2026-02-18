@@ -105,6 +105,14 @@ CREATE TABLE IF NOT EXISTS login_days (
     login_date TEXT NOT NULL,
     UNIQUE(user_id, login_date)
 );
+
+CREATE TABLE IF NOT EXISTS dm_channel_seen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    channel TEXT NOT NULL,
+    last_seen_at TIMESTAMP NOT NULL,
+    UNIQUE(user_id, channel)
+);
 """
 
 

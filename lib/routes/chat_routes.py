@@ -27,10 +27,11 @@ _CHANNEL_NAME_RE = re.compile(r"^[a-z0-9_-]+$")
 async def chat_page(request: Request, channel: str = "lobby", user: dict = Depends(require_user)):
     """Render the chat page with sidebar data for the given channel."""
     if chat.is_dm_channel(channel):
-        await chat.mark_dms_seen(user["id"])
+        await chat.mark_dm_channel_seen(user["id"], channel)
     channels = await chat.list_channels()
     online_users = await auth.list_online_users()
     dm_channels = await chat.list_dm_channels_for_user(user["id"])
+    unread_dm_channels = await chat.get_unread_dm_channels(user["id"])
     recent = await chat_manager.recent_messages(channel)
     return templates.TemplateResponse(
         "chat.html",
@@ -40,6 +41,7 @@ async def chat_page(request: Request, channel: str = "lobby", user: dict = Depen
             "channels": channels,
             "online_users": online_users,
             "dm_channels": dm_channels,
+            "unread_dm_channels": unread_dm_channels,
             "current_channel": channel,
         }),
     )
@@ -154,7 +156,7 @@ async def ws_chat(websocket: WebSocket):
                         await websocket.send_json({"type": "error", "message": err})
                         continue
                     if chat.is_dm_channel(new_channel):
-                        await chat.mark_dms_seen(user["id"])
+                        await chat.mark_dm_channel_seen(user["id"], new_channel)
                     old_channel = state["channel"]
                     old_queue = state["queue"]
                     new_queue = chat_manager.subscribe(new_channel)

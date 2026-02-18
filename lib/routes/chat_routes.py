@@ -26,6 +26,8 @@ _CHANNEL_NAME_RE = re.compile(r"^[a-z0-9_-]+$")
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request, channel: str = "lobby", user: dict = Depends(require_user)):
     """Render the chat page with sidebar data for the given channel."""
+    if chat.is_dm_channel(channel):
+        await chat.mark_dms_seen(user["id"])
     channels = await chat.list_channels()
     online_users = await auth.list_online_users()
     dm_channels = await chat.list_dm_channels_for_user(user["id"])
@@ -151,6 +153,8 @@ async def ws_chat(websocket: WebSocket):
                     if err:
                         await websocket.send_json({"type": "error", "message": err})
                         continue
+                    if chat.is_dm_channel(new_channel):
+                        await chat.mark_dms_seen(user["id"])
                     old_channel = state["channel"]
                     old_queue = state["queue"]
                     new_queue = chat_manager.subscribe(new_channel)

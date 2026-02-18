@@ -22,7 +22,7 @@ class _DMCheckMiddleware(BaseHTTPMiddleware):
         if token:
             user = await _auth.get_user_by_token(token)
             if user:
-                request.state.has_unread_dm = await _chat.has_dms_for_user(user["id"])
+                request.state.has_unread_dm = await _chat.has_unread_dms(user["id"])
         return await call_next(request)
 
 

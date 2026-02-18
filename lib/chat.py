@@ -206,19 +206,44 @@ async def validate_channel(channel: str, user_id: int) -> str | None:
     return None
 
 
-async def has_dms_for_user(user_id: int) -> bool:
-    """Return True if the user has any DM messages."""
+async def has_unread_dms(user_id: int) -> bool:
+    """Return True if the user has DM messages newer than their last_dm_seen timestamp."""
     db = await get_db()
     cursor = await db.execute(
-        """SELECT 1 FROM chat_messages
-           WHERE channel LIKE 'dm:%' AND (
-               channel LIKE '%:' || ? || ':%' OR
-               channel LIKE 'dm:' || ? || ':%' OR
-               channel LIKE '%:' || ?
-           ) LIMIT 1""",
-        (user_id, user_id, user_id),
+        "SELECT last_dm_seen FROM users WHERE id = ?", (user_id,)
     )
+    row = await cursor.fetchone()
+    last_seen = row["last_dm_seen"] if row else None
+    if last_seen:
+        cursor = await db.execute(
+            """SELECT 1 FROM chat_messages
+               WHERE channel LIKE 'dm:%' AND (
+                   channel LIKE '%:' || ? || ':%' OR
+                   channel LIKE 'dm:' || ? || ':%' OR
+                   channel LIKE '%:' || ?
+               ) AND created_at > ? LIMIT 1""",
+            (user_id, user_id, user_id, last_seen),
+        )
+    else:
+        cursor = await db.execute(
+            """SELECT 1 FROM chat_messages
+               WHERE channel LIKE 'dm:%' AND (
+                   channel LIKE '%:' || ? || ':%' OR
+                   channel LIKE 'dm:' || ? || ':%' OR
+                   channel LIKE '%:' || ?
+               ) LIMIT 1""",
+            (user_id, user_id, user_id),
+        )
     return await cursor.fetchone() is not None
+
+
+async def mark_dms_seen(user_id: int):
+    """Update the user's last_dm_seen timestamp to now."""
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET last_dm_seen = CURRENT_TIMESTAMP WHERE id = ?", (user_id,)
+    )
+    await db.commit()
 
 
 chat_manager = ChatManager()

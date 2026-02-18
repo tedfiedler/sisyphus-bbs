@@ -33,4 +33,14 @@
     <div class="post-body">{{ profile_user.about_me or 'This user has not written anything yet.' }}</div>
     {% endif %}
 </div>
+
+{% if profile_user.access_level == 2 and user.id == profile_user.id and user.access_level == 2 %}
+<div class="box">
+    <h2>Landing Page Message</h2>
+    <form method="post" action="/user/{{ profile_user.id }}/landing-message">
+        <textarea name="landing_message" placeholder="Set a message for the home page...">{{ profile_user.landing_message or '' }}</textarea>
+        <button type="submit">Save</button>
+    </form>
+</div>
+{% endif %}
 {% endblock %}

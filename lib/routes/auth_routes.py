@@ -50,7 +50,7 @@ async def index(request: Request):
     token = request.cookies.get("session_token")
     user = await auth.get_user_by_token(token) if token else None
     if user:
-        return RedirectResponse("/boards", status_code=302)
+        return RedirectResponse("/home", status_code=302)
     return templates.TemplateResponse("login.html", _add_globals(request))
 
 
@@ -65,7 +65,7 @@ async def register(request: Request, username: str = Form(), password: str = For
         )
     user = await auth.authenticate(username, password)
     token = await auth.create_session(user["id"])
-    resp = RedirectResponse("/boards", status_code=302)
+    resp = RedirectResponse("/home", status_code=302)
     is_https = request.url.scheme == "https"
     resp.set_cookie("session_token", token, httponly=True, secure=is_https, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
     return resp
@@ -93,10 +93,19 @@ async def login(request: Request, username: str = Form(), password: str = Form()
         )
     _clear_failures(client_ip)
     token = await auth.create_session(user["id"])
-    resp = RedirectResponse("/boards", status_code=302)
+    resp = RedirectResponse("/home", status_code=302)
     is_https = request.url.scheme == "https"
     resp.set_cookie("session_token", token, httponly=True, secure=is_https, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
     return resp
+
+
+@router.get("/home", response_class=HTMLResponse)
+async def home(request: Request, user: dict = Depends(require_user)):
+    """Display the home landing page with the Camus quote and superadmin message."""
+    landing_message = await auth.get_landing_message()
+    return templates.TemplateResponse(
+        "home.html", _add_globals(request, {"user": user, "landing_message": landing_message})
+    )
 
 
 @router.get("/online", response_class=HTMLResponse)
@@ -150,6 +159,15 @@ async def update_about(request: Request, user_id: int, about_me: str = Form(""),
             }),
         )
     await auth.update_about_me(user_id, about_me)
+    return RedirectResponse(f"/user/{user_id}", status_code=302)
+
+
+@router.post("/user/{user_id}/landing-message")
+async def update_landing_message(request: Request, user_id: int, landing_message: str = Form(""), user: dict = Depends(require_user)):
+    """Update the landing page message (superadmin only)."""
+    if not auth.is_superadmin(user) or user["id"] != user_id:
+        return RedirectResponse(f"/user/{user_id}", status_code=302)
+    await auth.update_landing_message(user_id, landing_message)
     return RedirectResponse(f"/user/{user_id}", status_code=302)
 
 

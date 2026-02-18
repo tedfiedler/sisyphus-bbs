@@ -122,7 +122,7 @@ async def get_user(user_id: int) -> dict | None:
     """Return a single user by ID, or None if not found."""
     db = await get_db()
     cursor = await db.execute(
-        "SELECT id, username, email, access_level, created_at, last_login, last_seen, about_me FROM users WHERE id = ?",
+        "SELECT id, username, email, access_level, created_at, last_login, last_seen, about_me, landing_message FROM users WHERE id = ?",
         (user_id,),
     )
     row = await cursor.fetchone()
@@ -177,6 +177,25 @@ async def list_users_directory() -> list[dict]:
            ORDER BY username COLLATE NOCASE"""
     )
     return [dict(r) for r in await cursor.fetchall()]
+
+
+async def get_landing_message() -> str:
+    """Return the superadmin's landing message text."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT landing_message FROM users WHERE access_level = 2 LIMIT 1"
+    )
+    row = await cursor.fetchone()
+    return row["landing_message"] if row and row["landing_message"] else ""
+
+
+async def update_landing_message(user_id: int, message: str):
+    """Update the landing message for a user."""
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET landing_message = ? WHERE id = ?", (message, user_id)
+    )
+    await db.commit()
 
 
 async def update_about_me(user_id: int, about_me: str):

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div style="text-align: center; margin-top: 2rem;">
+    <p style="color: var(--dim); font-style: italic; font-size: 1.2em;">"One must imagine Sisyphus happy"</p>
+    <p style="color: red;">| Albert Camus</p>
+</div>
+{% if landing_message %}
+<div class="box" style="max-width: 600px; margin: 2rem auto; text-align: center;">
+    <div class="post-body">{{ landing_message }}</div>
+</div>
+{% endif %}
+{% endblock %}

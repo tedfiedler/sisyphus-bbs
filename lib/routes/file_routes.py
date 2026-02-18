@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 
 from lib import config
 from lib import files as file_mod
-from lib.deps import require_user
+from lib.deps import require_file_access
 from lib.web_server import templates, _add_globals
 
 router = APIRouter()
@@ -29,7 +29,7 @@ ALLOWED_EXTENSIONS = {
 
 
 @router.get("/files", response_class=HTMLResponse)
-async def file_list(request: Request, area: str | None = None, user: dict = Depends(require_user)):
+async def file_list(request: Request, area: str | None = None, user: dict = Depends(require_file_access)):
     """List uploaded files, optionally filtered by area."""
     file_data = await file_mod.list_files(area)
     areas = await file_mod.list_areas()
@@ -44,7 +44,7 @@ async def file_upload(
     file: UploadFile = File(),
     area: str = Form("general"),
     description: str = Form(""),
-    user: dict = Depends(require_user),
+    user: dict = Depends(require_file_access),
 ):
     """Upload a file after validating its extension and size.
 
@@ -70,7 +70,7 @@ async def file_upload(
 
 
 @router.get("/files/download/{file_id}")
-async def file_download(request: Request, file_id: int, user: dict = Depends(require_user)):
+async def file_download(request: Request, file_id: int, user: dict = Depends(require_file_access)):
     """Serve a file for download after verifying the path is inside FILE_STORE."""
     f = await file_mod.get_file(file_id)
     if not f:

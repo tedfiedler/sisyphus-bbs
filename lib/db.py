@@ -98,6 +98,13 @@ CREATE TABLE IF NOT EXISTS post_likes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(post_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS login_days (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    login_date TEXT NOT NULL,
+    UNIQUE(user_id, login_date)
+);
 """
 
 
@@ -113,6 +120,8 @@ async def _migrate(db: aiosqlite.Connection):
         await db.execute("ALTER TABLE users ADD COLUMN landing_message TEXT DEFAULT ''")
     if "last_dm_seen" not in columns:
         await db.execute("ALTER TABLE users ADD COLUMN last_dm_seen TIMESTAMP")
+    if "file_upload_allowed" not in columns:
+        await db.execute("ALTER TABLE users ADD COLUMN file_upload_allowed INTEGER DEFAULT 0")
 
 
 async def get_db() -> aiosqlite.Connection:

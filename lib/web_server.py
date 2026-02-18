@@ -18,11 +18,14 @@ templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 class _DMCheckMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request.state.has_unread_dm = False
+        request.state.can_access_files = False
         token = request.cookies.get("session_token")
         if token:
             user = await _auth.get_user_by_token(token)
             if user:
                 request.state.has_unread_dm = await _chat.has_unread_dms(user["id"])
+                file_access = await _auth.check_file_access(user)
+                request.state.can_access_files = file_access["allowed"]
         return await call_next(request)
 
 
@@ -47,6 +50,7 @@ def _add_globals(request: Request, extra: dict | None = None) -> dict:
         "request": request,
         "bbs_name": config.BBS_NAME,
         "has_unread_dm": getattr(request.state, "has_unread_dm", False),
+        "can_access_files": getattr(request.state, "can_access_files", False),
     }
     if extra:
         ctx.update(extra)

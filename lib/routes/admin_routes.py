@@ -89,6 +89,18 @@ async def admin_delete_file(request: Request, file_id: int, user: dict = Depends
     return RedirectResponse("/files", status_code=302)
 
 
+@router.post("/admin/users/{user_id}/toggle-file-access")
+async def admin_toggle_file_access(request: Request, user_id: int, user: dict = Depends(require_admin)):
+    """Toggle the file_upload_allowed flag for a regular user."""
+    target = await auth.get_user(user_id)
+    if target and target["access_level"] == 0:
+        new_val = 0 if target.get("file_upload_allowed") else 1
+        db = await get_db()
+        await db.execute("UPDATE users SET file_upload_allowed = ? WHERE id = ?", (new_val, user_id))
+        await db.commit()
+    return RedirectResponse("/admin", status_code=302)
+
+
 @router.post("/admin/chat/{message_id}/delete")
 async def admin_delete_chat(request: Request, message_id: int, user: dict = Depends(require_admin)):
     """Delete a single chat message by ID."""

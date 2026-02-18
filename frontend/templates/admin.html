@@ -12,6 +12,7 @@
             <th>Role</th>
             <th>Created</th>
             <th>Last Login</th>
+            <th>Files</th>
             <th>Actions</th>
         </tr>
         {% for u in users %}
@@ -30,6 +31,15 @@
             </td>
             <td class="meta">{{ u.created_at }}</td>
             <td class="meta">{{ u.last_login or 'Never' }}</td>
+            <td>
+                {% if u.access_level >= 1 %}
+                N/A
+                {% else %}
+                <form method="post" action="/admin/users/{{ u.id }}/toggle-file-access" style="display:inline;">
+                    <button type="submit" class="btn-small">{% if u.file_upload_allowed %}&#9745;{% else %}&#9744;{% endif %}</button>
+                </form>
+                {% endif %}
+            </td>
             <td>
                 {% if u.id != user.id %}
                     {% if u.access_level == 0 %}

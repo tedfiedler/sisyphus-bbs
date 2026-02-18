@@ -5,7 +5,7 @@ backed by an SQLite database.
 """
 
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import bcrypt
 
@@ -60,6 +60,10 @@ async def authenticate(username: str, password: str) -> dict | None:
     await db.execute(
         "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (row["id"],)
     )
+    await db.execute(
+        "INSERT OR IGNORE INTO login_days (user_id, login_date) VALUES (?, date('now'))",
+        (row["id"],),
+    )
     await db.commit()
     return {"id": row["id"], "username": row["username"], "access_level": row["access_level"]}
 
@@ -113,7 +117,7 @@ async def list_users() -> list[dict]:
     """Return all users ordered by ID, excluding password hashes."""
     db = await get_db()
     cursor = await db.execute(
-        "SELECT id, username, email, access_level, created_at, last_login FROM users ORDER BY id"
+        "SELECT id, username, email, access_level, created_at, last_login, file_upload_allowed FROM users ORDER BY id"
     )
     return [dict(r) for r in await cursor.fetchall()]
 
@@ -122,7 +126,7 @@ async def get_user(user_id: int) -> dict | None:
     """Return a single user by ID, or None if not found."""
     db = await get_db()
     cursor = await db.execute(
-        "SELECT id, username, email, access_level, created_at, last_login, last_seen, about_me, landing_message FROM users WHERE id = ?",
+        "SELECT id, username, email, access_level, created_at, last_login, last_seen, about_me, landing_message, file_upload_allowed FROM users WHERE id = ?",
         (user_id,),
     )
     row = await cursor.fetchone()
@@ -205,3 +209,67 @@ async def update_about_me(user_id: int, about_me: str):
         "UPDATE users SET about_me = ? WHERE id = ?", (about_me, user_id)
     )
     await db.commit()
+
+
+async def get_login_streak(user_id: int) -> int:
+    """Return the number of consecutive login days ending today for the given user."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT login_date FROM login_days WHERE user_id = ? ORDER BY login_date DESC",
+        (user_id,),
+    )
+    rows = await cursor.fetchall()
+    dates = {row["login_date"] for row in rows}
+    today = date.today()
+    if today.isoformat() not in dates:
+        return 0
+    streak = 0
+    day = today
+    while day.isoformat() in dates:
+        streak += 1
+        day -= timedelta(days=1)
+    return streak
+
+
+async def check_file_access(user: dict) -> dict:
+    """Check whether a user meets all criteria for file section access."""
+    if is_admin(user):
+        return {
+            "allowed": True,
+            "is_admin": True,
+            "streak": 0,
+            "streak_ok": True,
+            "admin_approved": True,
+            "has_like": True,
+            "has_game": True,
+        }
+    db = await get_db()
+    streak = await get_login_streak(user["id"])
+    streak_ok = streak >= 5
+
+    admin_approved = bool(user.get("file_upload_allowed"))
+
+    cursor = await db.execute(
+        "SELECT COUNT(*) as cnt FROM post_likes pl JOIN posts p ON pl.post_id = p.id WHERE p.author_id = ?",
+        (user["id"],),
+    )
+    row = await cursor.fetchone()
+    has_like = row["cnt"] > 0
+
+    cursor = await db.execute(
+        "SELECT COUNT(*) as cnt FROM game_scores WHERE user_id = ?",
+        (user["id"],),
+    )
+    row = await cursor.fetchone()
+    has_game = row["cnt"] > 0
+
+    allowed = streak_ok and admin_approved and has_like and has_game
+    return {
+        "allowed": allowed,
+        "is_admin": False,
+        "streak": streak,
+        "streak_ok": streak_ok,
+        "admin_approved": admin_approved,
+        "has_like": has_like,
+        "has_game": has_game,
+    }

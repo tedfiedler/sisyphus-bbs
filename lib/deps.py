@@ -28,3 +28,12 @@ async def require_admin(request: Request) -> dict:
     if not auth.is_admin(user):
         raise HTTPException(status_code=403, detail="Forbidden")
     return user
+
+
+async def require_file_access(request: Request) -> dict:
+    """Require an authenticated user who meets all file access criteria, or raise 403."""
+    user = await require_user(request)
+    file_access = await auth.check_file_access(user)
+    if not file_access["allowed"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return user

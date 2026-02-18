@@ -21,7 +21,7 @@ router = APIRouter()
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_EXTENSIONS = {
     '.txt', '.md', '.pdf', '.doc', '.docx', '.csv', '.json', '.xml',
-    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg',
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',
     '.zip', '.tar', '.gz', '.7z',
     '.mp3', '.wav', '.ogg',
     '.mp4', '.webm',

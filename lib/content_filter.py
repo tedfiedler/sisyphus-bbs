@@ -2,7 +2,7 @@
 
 import re
 
-_URL_RE = re.compile(r'https?://|www\.', re.IGNORECASE)
+_URL_RE = re.compile(r'https?://|ftp://|//|data:|www\.', re.IGNORECASE)
 
 
 def contains_url(text: str) -> bool:

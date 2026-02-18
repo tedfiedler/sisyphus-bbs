@@ -37,11 +37,11 @@
                         <button type="submit" class="btn-small">Promote</button>
                     </form>
                     <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline;">
-                        <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete user {{ u.username }}?')">Delete</button>
+                        <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete user ' + {{ u.username|tojson }} + '?')">Delete</button>
                     </form>
                     {% elif u.access_level == 1 and user.access_level == 2 %}
                     <form method="post" action="/admin/users/{{ u.id }}/demote" style="display:inline;">
-                        <button type="submit" class="btn-small" onclick="return confirm('Demote {{ u.username }}?')">Demote</button>
+                        <button type="submit" class="btn-small" onclick="return confirm('Demote ' + {{ u.username|tojson }} + '?')">Demote</button>
                     </form>
                     {% endif %}
                 {% else %}

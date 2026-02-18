@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from lib import auth, boards
 from lib.content_filter import contains_url
 from lib.db import get_db
-from lib.deps import require_user
+from lib.deps import require_user, require_admin
 from lib.web_server import templates, _add_globals
 
 router = APIRouter()
@@ -24,7 +24,7 @@ async def board_list(request: Request, user: dict = Depends(require_user)):
 
 
 @router.post("/boards/create")
-async def board_create(request: Request, name: str = Form(), description: str = Form(""), user: dict = Depends(require_user)):
+async def board_create(request: Request, name: str = Form(), description: str = Form(""), user: dict = Depends(require_admin)):
     """Create a new board and redirect to the board listing."""
     await boards.create_board(name, description)
     return RedirectResponse("/boards", status_code=302)

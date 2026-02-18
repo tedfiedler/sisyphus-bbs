@@ -29,6 +29,18 @@ class _DMCheckMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_DMCheckMiddleware)
 
 
+class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(_SecurityHeadersMiddleware)
+
+
 def _add_globals(request: Request, extra: dict | None = None) -> dict:
     """Build a template context dict with the request and global BBS settings, merged with any extra values."""
     ctx = {

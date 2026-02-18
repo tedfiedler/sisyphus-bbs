@@ -142,13 +142,17 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
     if pvp:
         me, opp, my_id, opp_id = get_me_and_opponent(pvp, uid)
 
-        if pvp.winner:
-            my_score = calc_score(me, opp, pvp.winner)
-            opp_score = calc_score(opp, me, pvp.winner)
+        if pvp.winner and uid in pvp.seen_game_over:
+            # User already saw results; clear their link so they see the lobby
+            remove_pvp_game(pvp.game_id)
+        elif pvp.winner:
             if not pvp.score_saved:
                 pvp.score_saved = True
                 await save_score(pvp.player1_id, calc_score(pvp.player1, pvp.player2, pvp.winner), pvp.player2.name, pvp.winner == pvp.player1.name)
                 await save_score(pvp.player2_id, calc_score(pvp.player2, pvp.player1, pvp.winner), pvp.player1.name, pvp.winner == pvp.player2.name)
+            pvp.seen_game_over.add(uid)
+            my_score = calc_score(me, opp, pvp.winner)
+            opp_score = calc_score(opp, me, pvp.winner)
             return templates.TemplateResponse(
                 "mille.html",
                 _add_globals(request, {
@@ -159,8 +163,7 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
                     "my_score": my_score, "opp_score": opp_score,
                 }),
             )
-
-        if pvp.coup_fourre_pending == uid:
+        elif pvp.coup_fourre_pending == uid:
             safety = SAFETY_FOR[pvp.coup_fourre_hazard]
             return templates.TemplateResponse(
                 "mille.html",
@@ -172,8 +175,7 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
                     "coup_fourre_safety": safety,
                 }),
             )
-
-        if pvp.current_turn == uid and pvp.coup_fourre_pending is None:
+        elif pvp.current_turn == uid and pvp.coup_fourre_pending is None:
             playable = [can_play(c, me, opp) for c in me.hand]
             return templates.TemplateResponse(
                 "mille.html",
@@ -185,17 +187,17 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
                     "playable": playable,
                 }),
             )
-
-        # Opponent's turn — read-only waiting
-        return templates.TemplateResponse(
-            "mille.html",
-            _add_globals(request, {
-                "user": user,
-                "state": "pvp_waiting",
-                "game": pvp,
-                "me": me, "opp": opp,
-            }),
-        )
+        else:
+            # Opponent's turn — read-only waiting
+            return templates.TemplateResponse(
+                "mille.html",
+                _add_globals(request, {
+                    "user": user,
+                    "state": "pvp_waiting",
+                    "game": pvp,
+                    "me": me, "opp": opp,
+                }),
+            )
 
     # --- Priority 2: CPU game in progress ---
     game = get_game(uid)
@@ -205,34 +207,39 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
             _check_game_over(game)
 
         if game.winner:
-            human_score = calc_score(game.human, game.cpu, game.winner)
-            cpu_score = calc_score(game.cpu, game.human, game.winner)
-            if not game.score_saved:
+            if game.score_saved:
+                # User already saw results; clear state so they see the lobby
+                remove_game(uid)
+                game = None
+            else:
+                human_score = calc_score(game.human, game.cpu, game.winner)
+                cpu_score = calc_score(game.cpu, game.human, game.winner)
                 game.score_saved = True
                 await save_score(uid, human_score, "CPU", game.winner == game.human.name)
-            return templates.TemplateResponse(
-                "mille.html",
-                _add_globals(request, {
-                    "user": user,
-                    "state": "game_over",
-                    "game": game,
-                    "human_score": human_score,
-                    "cpu_score": cpu_score,
-                }),
-            )
+                return templates.TemplateResponse(
+                    "mille.html",
+                    _add_globals(request, {
+                        "user": user,
+                        "state": "game_over",
+                        "game": game,
+                        "human_score": human_score,
+                        "cpu_score": cpu_score,
+                    }),
+                )
 
-        if game.coup_fourre_pending:
-            safety = SAFETY_FOR[game.coup_fourre_pending]
-            return templates.TemplateResponse(
-                "mille.html",
-                _add_globals(request, {
-                    "user": user,
-                    "state": "coup_fourre",
-                    "game": game,
-                    "coup_fourre_safety": safety,
-                }),
-            )
+    if game and game.coup_fourre_pending:
+        safety = SAFETY_FOR[game.coup_fourre_pending]
+        return templates.TemplateResponse(
+            "mille.html",
+            _add_globals(request, {
+                "user": user,
+                "state": "coup_fourre",
+                "game": game,
+                "coup_fourre_safety": safety,
+            }),
+        )
 
+    if game:
         playable = [
             can_play(card, game.human, game.cpu)
             for card in game.human.hand

@@ -400,6 +400,7 @@ class PvpGameState:
     coup_fourre_pending: int | None = None    # user_id who can respond
     coup_fourre_hazard: str | None = None     # hazard name
     score_saved: bool = False
+    seen_game_over: set = field(default_factory=set)  # user_ids who have seen the results
 
 
 _pvp_games: dict[str, PvpGameState] = {}  # game_id -> state

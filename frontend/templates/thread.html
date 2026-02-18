@@ -7,6 +7,12 @@
     {% if thread %} &raquo; {{ thread.subject }}{% endif %}
 </div>
 
+{% if error %}
+<div class="box" style="border-color: red; color: red;">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
 {% if thread and posts is not none %}
 {# Viewing a thread with its posts #}
 <div class="box">

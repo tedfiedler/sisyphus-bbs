@@ -7,7 +7,8 @@ creating new threads, and posting replies.
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from lib import boards
+from lib import auth, boards
+from lib.content_filter import contains_url
 from lib.db import get_db
 from lib.deps import require_user
 from lib.web_server import templates, _add_globals
@@ -44,6 +45,17 @@ async def board_view(request: Request, board_id: int, user: dict = Depends(requi
 @router.post("/boards/{board_id}/thread")
 async def thread_create(request: Request, board_id: int, subject: str = Form(), body: str = Form(), user: dict = Depends(require_user)):
     """Create a new thread with an initial post and redirect to it."""
+    if not auth.is_admin(user) and (contains_url(subject) or contains_url(body)):
+        board = await boards.get_board(board_id)
+        thread_list = await boards.list_threads(board_id)
+        return templates.TemplateResponse(
+            "thread.html",
+            _add_globals(request, {
+                "user": user, "board": board, "threads": thread_list,
+                "posts": None, "thread": None,
+                "error": "URLs are not allowed in posts.",
+            }),
+        )
     thread_id = await boards.create_thread(board_id, subject, user["id"], body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)
 
@@ -76,5 +88,17 @@ async def post_like(request: Request, post_id: int, user: dict = Depends(require
 @router.post("/thread/{thread_id}/reply")
 async def thread_reply(request: Request, thread_id: int, body: str = Form(), user: dict = Depends(require_user)):
     """Add a reply post to an existing thread."""
+    if not auth.is_admin(user) and contains_url(body):
+        thread = await boards.get_thread(thread_id)
+        board = await boards.get_board(thread["board_id"])
+        post_list = await boards.list_posts(thread_id, user["id"])
+        return templates.TemplateResponse(
+            "thread.html",
+            _add_globals(request, {
+                "user": user, "board": board, "thread": thread,
+                "posts": post_list, "threads": None,
+                "error": "URLs are not allowed in posts.",
+            }),
+        )
     await boards.create_post(thread_id, user["id"], body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)

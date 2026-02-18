@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.username }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+    <a href="/online">Users</a> &raquo; {{ profile_user.username }}
+</div>
+
+{% if error %}
+<div class="box" style="border-color: red; color: red;">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<div class="box">
+    <h2>{{ profile_user.username }}
+        {% if profile_user.access_level == 2 %}<span class="admin-badge">SUPER</span>{% elif profile_user.access_level == 1 %}<span class="admin-badge">ADMIN</span>{% endif %}
+    </h2>
+    <p>
+        Status: <span style="color: var({% if is_online %}--fg{% else %}--dim{% endif %});">{% if is_online %}ONLINE{% else %}offline{% endif %}</span>
+    </p>
+    <p class="meta">Member since: {{ profile_user.created_at }}</p>
+    <p class="meta">Last login: {{ profile_user.last_login or 'Never' }}</p>
+</div>
+
+<div class="box">
+    <h2>About Me</h2>
+    {% if can_edit %}
+    <form method="post" action="/user/{{ profile_user.id }}/about">
+        <textarea name="about_me" placeholder="Tell us about yourself...">{{ profile_user.about_me or '' }}</textarea>
+        <button type="submit">Save</button>
+    </form>
+    {% else %}
+    <div class="post-body">{{ profile_user.about_me or 'This user has not written anything yet.' }}</div>
+    {% endif %}
+</div>
+{% endblock %}

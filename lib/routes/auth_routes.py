@@ -6,12 +6,14 @@ per-IP rate limiting on the login endpoint to mitigate brute-force attacks.
 
 import time
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from lib import config
 from lib import auth
+from lib.content_filter import contains_url
 from lib.deps import require_user
 from lib.web_server import templates, _add_globals
 
@@ -99,11 +101,56 @@ async def login(request: Request, username: str = Form(), password: str = Form()
 
 @router.get("/online", response_class=HTMLResponse)
 async def online(request: Request, user: dict = Depends(require_user)):
-    """Show all currently online users (seen within the last 5 minutes)."""
-    online_users = await auth.list_online_users()
+    """Show the user directory with online status."""
+    all_users = await auth.list_users_directory()
     return templates.TemplateResponse(
-        "online.html", _add_globals(request, {"user": user, "online_users": online_users})
+        "online.html", _add_globals(request, {"user": user, "all_users": all_users})
     )
+
+
+@router.get("/user/{user_id}", response_class=HTMLResponse)
+async def user_profile(request: Request, user_id: int, user: dict = Depends(require_user)):
+    """Display a user's profile page."""
+    profile_user = await auth.get_user(user_id)
+    if not profile_user:
+        return RedirectResponse("/online", status_code=302)
+    is_online = bool(
+        profile_user.get("last_seen")
+        and profile_user["last_seen"] > (datetime.now(timezone.utc) - timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    )
+    can_edit = user["id"] == user_id or auth.is_admin(user)
+    return templates.TemplateResponse(
+        "profile.html",
+        _add_globals(request, {
+            "user": user,
+            "profile_user": profile_user,
+            "is_online": is_online,
+            "can_edit": can_edit,
+        }),
+    )
+
+
+@router.post("/user/{user_id}/about")
+async def update_about(request: Request, user_id: int, about_me: str = Form(""), user: dict = Depends(require_user)):
+    """Update a user's About Me text."""
+    if user["id"] != user_id and not auth.is_admin(user):
+        return RedirectResponse(f"/user/{user_id}", status_code=302)
+    if not auth.is_admin(user) and contains_url(about_me):
+        profile_user = await auth.get_user(user_id)
+        is_online = True
+        can_edit = True
+        return templates.TemplateResponse(
+            "profile.html",
+            _add_globals(request, {
+                "user": user,
+                "profile_user": profile_user,
+                "is_online": is_online,
+                "can_edit": can_edit,
+                "error": "URLs are not allowed in About Me.",
+            }),
+        )
+    await auth.update_about_me(user_id, about_me)
+    return RedirectResponse(f"/user/{user_id}", status_code=302)
 
 
 @router.get("/logout")

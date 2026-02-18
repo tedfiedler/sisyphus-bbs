@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
     access_level INTEGER DEFAULT 0,
-    last_seen TIMESTAMP
+    last_seen TIMESTAMP,
+    about_me TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS boards (
@@ -104,6 +105,8 @@ async def _migrate(db: aiosqlite.Connection):
     columns = {row[1] for row in await cursor.fetchall()}
     if "last_seen" not in columns:
         await db.execute("ALTER TABLE users ADD COLUMN last_seen TIMESTAMP")
+    if "about_me" not in columns:
+        await db.execute("ALTER TABLE users ADD COLUMN about_me TEXT DEFAULT ''")
 
 
 async def get_db() -> aiosqlite.Connection:

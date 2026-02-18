@@ -1,28 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Who's Online{% endblock %}
+{% block title %}User Directory{% endblock %}
 {% block content %}
 <div class="box">
-    <h2>Who's Online</h2>
-    {% if online_users %}
-    <p>{{ online_users | length }} user{{ 's' if online_users | length != 1 else '' }} online:</p>
-    <table>
-        <thead>
-            <tr>
-                <th>Username</th>
-                <th>Last Seen</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for ou in online_users %}
-            <tr>
-                <td>{{ ou.username }}</td>
-                <td class="meta">{{ ou.last_seen }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p class="meta">No users are currently online.</p>
-    {% endif %}
+    <h2>User Directory</h2>
+    <p class="meta">{{ all_users | length }} registered user{{ 's' if all_users | length != 1 else '' }}</p>
 </div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Member Since</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in all_users %}
+        <tr>
+            <td>
+                <a href="/user/{{ u.id }}" style="color: var({% if u.is_online %}--fg{% else %}--dim{% endif %});">{{ u.username }}</a>
+                {% if u.access_level == 2 %}<span class="admin-badge">SUPER</span>{% elif u.access_level == 1 %}<span class="admin-badge">ADMIN</span>{% endif %}
+            </td>
+            <td style="color: var({% if u.is_online %}--fg{% else %}--dim{% endif %});">
+                {% if u.is_online %}ONLINE{% else %}offline{% endif %}
+            </td>
+            <td class="meta">{{ u.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 {% endblock %}

@@ -122,7 +122,7 @@ async def get_user(user_id: int) -> dict | None:
     """Return a single user by ID, or None if not found."""
     db = await get_db()
     cursor = await db.execute(
-        "SELECT id, username, email, access_level, created_at, last_login FROM users WHERE id = ?",
+        "SELECT id, username, email, access_level, created_at, last_login, last_seen, about_me FROM users WHERE id = ?",
         (user_id,),
     )
     row = await cursor.fetchone()
@@ -165,3 +165,24 @@ async def list_online_users() -> list[dict]:
            ORDER BY username"""
     )
     return [dict(r) for r in await cursor.fetchall()]
+
+
+async def list_users_directory() -> list[dict]:
+    """Return all users with a computed is_online flag, ordered alphabetically."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT id, username, access_level, created_at, last_seen,
+                  CASE WHEN last_seen > datetime('now', '-5 minutes') THEN 1 ELSE 0 END AS is_online
+           FROM users
+           ORDER BY username COLLATE NOCASE"""
+    )
+    return [dict(r) for r in await cursor.fetchall()]
+
+
+async def update_about_me(user_id: int, about_me: str):
+    """Update the about_me text for a user."""
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET about_me = ? WHERE id = ?", (about_me, user_id)
+    )
+    await db.commit()

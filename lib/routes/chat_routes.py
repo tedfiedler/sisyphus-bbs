@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from lib import auth, chat
 from lib.chat import chat_manager
+from lib.content_filter import contains_url
 from lib.deps import require_user, require_admin
 from lib.web_server import templates, _add_globals
 
@@ -162,8 +163,12 @@ async def ws_chat(websocket: WebSocket):
                     history = await chat_manager.recent_messages(new_channel)
                     await websocket.send_json({"type": "history", "messages": history})
                     continue
+                msg_text = parsed.get("message", "")
+                if not auth.is_admin(user) and contains_url(msg_text):
+                    await websocket.send_json({"type": "error", "message": "URLs are not allowed in chat messages."})
+                    continue
                 await chat_manager.broadcast(
-                    state["channel"], user["username"], parsed.get("message", "")
+                    state["channel"], user["username"], msg_text
                 )
 
         async def _send():

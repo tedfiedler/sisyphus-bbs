@@ -26,6 +26,7 @@
     <h2>About Me</h2>
     {% if can_edit %}
     <form method="post" action="/user/{{ profile_user.id }}/about">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <textarea name="about_me" placeholder="Tell us about yourself...">{{ profile_user.about_me or '' }}</textarea>
         <button type="submit">Save</button>
     </form>
@@ -38,6 +39,7 @@
 <div class="box">
     <h2>Landing Page Message</h2>
     <form method="post" action="/user/{{ profile_user.id }}/landing-message">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <textarea name="landing_message" placeholder="Set a message for the home page...">{{ profile_user.landing_message or '' }}</textarea>
         <button type="submit">Save</button>
     </form>

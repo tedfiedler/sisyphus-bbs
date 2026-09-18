@@ -13,7 +13,7 @@ from lib import files as file_mod
 from lib.chat import delete_message
 from lib.db import get_db
 from lib.deps import require_admin
-from lib.web_server import templates, _add_globals
+from lib.templating import templates, _add_globals
 
 router = APIRouter()
 
@@ -54,7 +54,7 @@ async def admin_delete_user(request: Request, user_id: int, user: dict = Depends
     """Delete a regular user account. Admins cannot delete other admins."""
     target = await auth.get_user(user_id)
     if target and target["access_level"] == 0:
-        await auth.delete_user(user_id)
+        await auth.delete_user(user_id, reassign_channels_to=user["id"])
     return RedirectResponse("/admin", status_code=302)
 
 

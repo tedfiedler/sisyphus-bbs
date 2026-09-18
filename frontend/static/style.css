@@ -280,3 +280,20 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
     color: var(--accent);
     background: rgba(0, 191, 255, 0.05);
 }
+
+/* Logout is a POST form; make its button read as a nav link. */
+.nav-form {
+    display: inline;
+}
+.link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--link, inherit);
+    text-decoration: underline;
+    cursor: pointer;
+}
+.link-button:hover {
+    color: var(--fg);
+}

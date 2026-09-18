@@ -4,8 +4,9 @@ Provide password hashing, session management, and role-based access control
 backed by an SQLite database.
 """
 
+import os
 import secrets
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import bcrypt
 
@@ -19,8 +20,16 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    """Verify a plaintext password against a bcrypt hash."""
-    return bcrypt.checkpw(password.encode(), password_hash.encode())
+    """Verify a plaintext password against a bcrypt hash.
+
+    bcrypt refuses inputs over 72 bytes, which no stored password can be;
+    such a candidate simply cannot match, so treat it as a failed attempt
+    rather than letting the error escape to the caller.
+    """
+    try:
+        return bcrypt.checkpw(password.encode(), password_hash.encode())
+    except ValueError:
+        return False
 
 
 async def register_user(username: str, password: str, email: str = "") -> dict | None:
@@ -68,11 +77,31 @@ async def authenticate(username: str, password: str) -> dict | None:
     return {"id": row["id"], "username": row["username"], "access_level": row["access_level"]}
 
 
+async def delete_expired_sessions() -> int:
+    """Remove sessions whose expiry has passed. Returns the number deleted."""
+    db = await get_db()
+    cursor = await db.execute(
+        "DELETE FROM sessions WHERE expires_at <= ?",
+        (datetime.now(timezone.utc).isoformat(),),
+    )
+    await db.commit()
+    return cursor.rowcount
+
+
 async def create_session(user_id: int) -> str:
-    """Create a new session for the given user and return the session token."""
+    """Create a new session for the given user and return the session token.
+
+    Expired rows are swept here: logins are the only thing that adds sessions,
+    so this keeps the table proportional to recent activity without needing a
+    background job.
+    """
     db = await get_db()
     token = secrets.token_urlsafe(32)
     expires = datetime.now(timezone.utc) + timedelta(hours=config.SESSION_EXPIRY_HOURS)
+    await db.execute(
+        "DELETE FROM sessions WHERE expires_at <= ?",
+        (datetime.now(timezone.utc).isoformat(),),
+    )
     await db.execute(
         "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)",
         (user_id, token, expires.isoformat()),
@@ -142,10 +171,78 @@ async def set_access_level(user_id: int, level: int):
     await db.commit()
 
 
-async def delete_user(user_id: int):
-    """Delete a user and all their associated sessions."""
+async def delete_user(user_id: int, reassign_channels_to: int | None = None):
+    """Delete a user and every row that references them.
+
+    Threads the user started are removed along with their replies, since
+    ``threads.author_id`` cannot be left dangling. Chat channels the user
+    created are handed to *reassign_channels_to* (falling back to another
+    admin) so a shared channel outlives its creator; if no other admin
+    remains, the channel and its messages are removed.
+
+    The whole deletion is committed as a single transaction.
+    """
     db = await get_db()
-    await db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+
+    # Uploaded files: remove from disk first, then drop the rows.
+    cursor = await db.execute("SELECT path FROM files WHERE uploader_id = ?", (user_id,))
+    for row in await cursor.fetchall():
+        try:
+            os.unlink(row["path"])
+        except OSError:
+            pass
+    await db.execute("DELETE FROM files WHERE uploader_id = ?", (user_id,))
+
+    # Likes must go before the posts they point at.
+    await db.execute("DELETE FROM post_likes WHERE user_id = ?", (user_id,))
+    await db.execute(
+        """DELETE FROM post_likes WHERE post_id IN (
+               SELECT id FROM posts
+               WHERE author_id = ?
+                  OR thread_id IN (SELECT id FROM threads WHERE author_id = ?)
+           )""",
+        (user_id, user_id),
+    )
+
+    # Posts by this user, plus any replies left in threads they started.
+    await db.execute(
+        """DELETE FROM posts
+           WHERE author_id = ?
+              OR thread_id IN (SELECT id FROM threads WHERE author_id = ?)""",
+        (user_id, user_id),
+    )
+    await db.execute("DELETE FROM threads WHERE author_id = ?", (user_id,))
+
+    # Chat channels they created outlive them where possible.
+    cursor = await db.execute(
+        "SELECT COUNT(*) AS cnt FROM chat_channels WHERE created_by = ?", (user_id,)
+    )
+    if (await cursor.fetchone())["cnt"]:
+        heir = reassign_channels_to
+        if heir is None or heir == user_id:
+            cursor = await db.execute(
+                "SELECT id FROM users WHERE access_level >= 1 AND id != ? LIMIT 1",
+                (user_id,),
+            )
+            row = await cursor.fetchone()
+            heir = row["id"] if row else None
+        if heir is None:
+            await db.execute(
+                """DELETE FROM chat_messages WHERE channel IN (
+                       SELECT name FROM chat_channels WHERE created_by = ?
+                   )""",
+                (user_id,),
+            )
+            await db.execute("DELETE FROM chat_channels WHERE created_by = ?", (user_id,))
+        else:
+            await db.execute(
+                "UPDATE chat_channels SET created_by = ? WHERE created_by = ?",
+                (heir, user_id),
+            )
+
+    for table in ("chat_messages", "game_scores", "login_days", "dm_channel_seen", "sessions"):
+        await db.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+
     await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
     await db.commit()
 
@@ -220,7 +317,9 @@ async def get_login_streak(user_id: int) -> int:
     )
     rows = await cursor.fetchall()
     dates = {row["login_date"] for row in rows}
-    today = date.today()
+    # login_days rows are written with SQLite's date('now'), which is UTC,
+    # so the streak must be walked in UTC too.
+    today = datetime.now(timezone.utc).date()
     if today.isoformat() not in dates:
         return 0
     streak = 0
@@ -247,7 +346,13 @@ async def check_file_access(user: dict) -> dict:
     streak = await get_login_streak(user["id"])
     streak_ok = streak >= 5
 
-    admin_approved = bool(user.get("file_upload_allowed"))
+    # Read the flag from the database rather than trusting the caller's dict:
+    # session-derived user dicts only carry id/username/access_level.
+    cursor = await db.execute(
+        "SELECT file_upload_allowed FROM users WHERE id = ?", (user["id"],)
+    )
+    row = await cursor.fetchone()
+    admin_approved = bool(row["file_upload_allowed"]) if row else False
 
     cursor = await db.execute(
         "SELECT COUNT(*) as cnt FROM post_likes pl JOIN posts p ON pl.post_id = p.id WHERE p.author_id = ?",

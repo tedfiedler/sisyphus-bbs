@@ -3,29 +3,44 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from lib import auth as _auth
 from lib import chat as _chat
 from lib import config
+from lib.csrf import CSRFMiddleware
+# Re-exported so existing imports from this module keep working.
+from lib.templating import templates, _add_globals  # noqa: F401
 
 app = FastAPI(title=config.BBS_NAME)
 app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
-templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 
 
 class _DMCheckMiddleware(BaseHTTPMiddleware):
+    """Resolve the session once per request and precompute the nav flags.
+
+    The resolved user is stashed on ``request.state`` so route dependencies
+    reuse it instead of looking the token up a second time. Static assets
+    need none of this, so they skip the database entirely.
+    """
+
     async def dispatch(self, request: Request, call_next):
+        request.state.user = None
+        request.state.user_resolved = False
         request.state.has_unread_dm = False
         request.state.can_access_files = False
+
+        if request.url.path.startswith("/static"):
+            return await call_next(request)
+
         token = request.cookies.get("session_token")
-        if token:
-            user = await _auth.get_user_by_token(token)
-            if user:
-                request.state.has_unread_dm = await _chat.has_unread_dms(user["id"])
-                file_access = await _auth.check_file_access(user)
-                request.state.can_access_files = file_access["allowed"]
+        user = await _auth.get_user_by_token(token) if token else None
+        request.state.user = user
+        request.state.user_resolved = True
+        if user:
+            request.state.has_unread_dm = await _chat.has_unread_dms(user["id"])
+            file_access = await _auth.check_file_access(user)
+            request.state.can_access_files = file_access["allowed"]
         return await call_next(request)
 
 
@@ -43,18 +58,11 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(_SecurityHeadersMiddleware)
 
+# Added last so it runs outermost: an unsafe request without a valid token is
+# rejected before any session or database work happens.
+app.add_middleware(CSRFMiddleware)
 
-def _add_globals(request: Request, extra: dict | None = None) -> dict:
-    """Build a template context dict with the request and global BBS settings, merged with any extra values."""
-    ctx = {
-        "request": request,
-        "bbs_name": config.BBS_NAME,
-        "has_unread_dm": getattr(request.state, "has_unread_dm", False),
-        "can_access_files": getattr(request.state, "can_access_files", False),
-    }
-    if extra:
-        ctx.update(extra)
-    return ctx
+
 
 
 from lib.routes import auth_routes, board_routes, file_routes, chat_routes, admin_routes, game_routes  # noqa: E402

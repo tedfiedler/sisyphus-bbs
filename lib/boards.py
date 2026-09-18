@@ -129,15 +129,20 @@ async def toggle_like(post_id: int, user_id: int) -> int:
 
 
 async def delete_post(post_id: int):
-    """Delete a single post by its ID."""
+    """Delete a single post and the likes attached to it."""
     db = await get_db()
+    await db.execute("DELETE FROM post_likes WHERE post_id = ?", (post_id,))
     await db.execute("DELETE FROM posts WHERE id = ?", (post_id,))
     await db.commit()
 
 
 async def delete_thread(thread_id: int):
-    """Delete a thread and all of its posts."""
+    """Delete a thread, all of its posts, and the likes on those posts."""
     db = await get_db()
+    await db.execute(
+        "DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE thread_id = ?)",
+        (thread_id,),
+    )
     await db.execute("DELETE FROM posts WHERE thread_id = ?", (thread_id,))
     await db.execute("DELETE FROM threads WHERE id = ?", (thread_id,))
     await db.commit()

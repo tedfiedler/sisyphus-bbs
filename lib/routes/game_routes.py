@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from lib import auth
 from lib.deps import require_user
-from lib.web_server import templates, _add_globals
+from lib.templating import templates, _add_globals
 from lib.mille import (
     SAFETY_FOR, card_name, can_play, do_play,
     apply_coup_fourre, cpu_choose, calc_score,

@@ -14,7 +14,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from lib import config
 from lib import files as file_mod
 from lib.deps import require_file_access
-from lib.web_server import templates, _add_globals
+from lib.models import FileUploadMeta, validate
+from lib.templating import templates, _add_globals
 
 router = APIRouter()
 
@@ -52,6 +53,10 @@ async def file_upload(
     not in ``ALLOWED_EXTENSIONS``. The filename and area are sanitized
     by ``save_upload`` to prevent path traversal.
     """
+    meta, error = validate(FileUploadMeta, area=area, description=description)
+    if error:
+        return RedirectResponse("/files?error=invalid_metadata", status_code=303)
+    area, description = meta.area, meta.description
     # Validate file extension
     ext = Path(file.filename).suffix.lower() if file.filename else ""
     if ext not in ALLOWED_EXTENSIONS:

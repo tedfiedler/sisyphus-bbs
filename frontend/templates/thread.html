@@ -21,6 +21,7 @@
     {% if thread.pinned %}<span class="badge">PINNED</span>{% endif %}
     {% if user.access_level >= 1 %}
     <form method="post" action="/admin/thread/{{ thread.id }}/delete" style="display:inline; margin-left: 10px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete this entire thread?')">Delete Thread</button>
     </form>
     {% endif %}
@@ -33,10 +34,12 @@
         <span class="meta">{{ post.created_at }}</span>
         {% if user.access_level >= 1 %}
         <form method="post" action="/admin/post/{{ post.id }}/delete" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete this post?')">Del</button>
         </form>
         {% endif %}
         <form method="post" action="/post/{{ post.id }}/like" style="display:inline; margin-left: 10px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn-small{% if post.liked %} liked{% endif %}" title="Like this post">&#128077; {{ post.like_count }}</button>
         </form>
     </div>
@@ -48,6 +51,7 @@
 <div class="box">
     <h2>Reply</h2>
     <form method="post" action="/thread/{{ thread.id }}/reply">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <textarea name="body" placeholder="Your reply..." required></textarea>
         <button type="submit">Post Reply</button>
     </form>
@@ -89,6 +93,7 @@
 <div class="box" style="margin-top: 15px;">
     <h2>New Thread</h2>
     <form method="post" action="/boards/{{ board.id }}/thread">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="text" name="subject" placeholder="Subject" required>
         <textarea name="body" placeholder="Your message..." required></textarea>
         <button type="submit">Create Thread</button>

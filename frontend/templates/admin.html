@@ -36,6 +36,7 @@
                 N/A
                 {% else %}
                 <form method="post" action="/admin/users/{{ u.id }}/toggle-file-access" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn-small">{% if u.file_upload_allowed %}&#9745;{% else %}&#9744;{% endif %}</button>
                 </form>
                 {% endif %}
@@ -44,13 +45,16 @@
                 {% if u.id != user.id %}
                     {% if u.access_level == 0 %}
                     <form method="post" action="/admin/users/{{ u.id }}/promote" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn-small">Promote</button>
                     </form>
                     <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete user ' + {{ u.username|tojson }} + '?')">Delete</button>
                     </form>
                     {% elif u.access_level == 1 and user.access_level == 2 %}
                     <form method="post" action="/admin/users/{{ u.id }}/demote" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn-small" onclick="return confirm('Demote ' + {{ u.username|tojson }} + '?')">Demote</button>
                     </form>
                     {% endif %}

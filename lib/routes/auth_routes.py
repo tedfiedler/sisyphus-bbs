@@ -4,8 +4,6 @@ Provides form-based authentication with session cookies. Includes
 per-IP rate limiting on the login endpoint to mitigate brute-force attacks.
 """
 
-import time
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request, Form
@@ -15,33 +13,28 @@ from lib import config
 from lib import auth
 from lib.content_filter import contains_url
 from lib.deps import require_user
-from lib.web_server import templates, _add_globals
+from lib.models import ProfileText, UserCreate, UserLogin, validate
+from lib.ratelimit import RateLimiter, client_key
+from lib.templating import templates, _add_globals
 
 router = APIRouter()
 
-# Rate limiting: track failed login attempts per IP
-_login_attempts: dict[str, list[float]] = defaultdict(list)
-_MAX_ATTEMPTS = 5       # max failures per window
-_WINDOW_SECONDS = 300   # 5-minute window
+# Failed logins per client, over a five-minute window.
+_login_limiter = RateLimiter(max_events=5, window_seconds=300)
+
+# Registrations per client per hour. Counts every attempt, not just failures,
+# so one address cannot mass-create accounts. Kept loose enough that a shared
+# address behind NAT is not locked out by a few neighbours signing up.
+_register_limiter = RateLimiter(max_events=10, window_seconds=3600)
 
 
-def _is_rate_limited(ip: str) -> bool:
-    """Check whether the given IP has exceeded the failed-login threshold."""
-    now = time.monotonic()
-    attempts = _login_attempts[ip]
-    # Prune old entries
-    _login_attempts[ip] = [t for t in attempts if now - t < _WINDOW_SECONDS]
-    return len(_login_attempts[ip]) >= _MAX_ATTEMPTS
+def _is_recently_seen(profile_user: dict | None) -> bool:
+    """Return True if the profile's last_seen timestamp is within five minutes."""
+    if not profile_user or not profile_user.get("last_seen"):
+        return False
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    return profile_user["last_seen"] > cutoff
 
-
-def _record_failure(ip: str):
-    """Record a failed login attempt timestamp for the given IP."""
-    _login_attempts[ip].append(time.monotonic())
-
-
-def _clear_failures(ip: str):
-    """Remove all recorded failures for the given IP after a successful login."""
-    _login_attempts.pop(ip, None)
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -57,6 +50,20 @@ async def index(request: Request):
 @router.post("/register")
 async def register(request: Request, username: str = Form(), password: str = Form(), email: str = Form("")):
     """Create a new user account, authenticate, and set the session cookie."""
+    client = client_key(request)
+    if _register_limiter.is_limited(client):
+        return templates.TemplateResponse(
+            "login.html",
+            _add_globals(request, {"error": "Too many accounts created. Try again later."}),
+            status_code=429,
+        )
+    _register_limiter.record(client)
+    form, error = validate(UserCreate, username=username, password=password, email=email)
+    if error:
+        return templates.TemplateResponse(
+            "login.html", _add_globals(request, {"error": error}), status_code=400,
+        )
+    username, password, email = form.username, form.password, form.email
     result = await auth.register_user(username, password, email)
     if result is None:
         return templates.TemplateResponse(
@@ -78,20 +85,27 @@ async def login(request: Request, username: str = Form(), password: str = Form()
     Rate-limited to ``_MAX_ATTEMPTS`` failures per ``_WINDOW_SECONDS`` per
     client IP. On success the failure counter is cleared.
     """
-    client_ip = request.client.host if request.client else "unknown"
-    if _is_rate_limited(client_ip):
+    form, error = validate(UserLogin, username=username, password=password)
+    if error:
+        return templates.TemplateResponse(
+            "login.html", _add_globals(request, {"error": "Invalid credentials"}),
+            status_code=401,
+        )
+    username, password = form.username, form.password
+    client_ip = client_key(request)
+    if _login_limiter.is_limited(client_ip):
         return templates.TemplateResponse(
             "login.html", _add_globals(request, {"error": "Too many failed attempts. Try again later."}),
             status_code=429,
         )
     user = await auth.authenticate(username, password)
     if user is None:
-        _record_failure(client_ip)
+        _login_limiter.record(client_ip)
         return templates.TemplateResponse(
             "login.html", _add_globals(request, {"error": "Invalid credentials"}),
             status_code=401,
         )
-    _clear_failures(client_ip)
+    _login_limiter.clear(client_ip)
     token = await auth.create_session(user["id"])
     resp = RedirectResponse("/home", status_code=302)
     is_https = request.url.scheme == "https"
@@ -123,10 +137,7 @@ async def user_profile(request: Request, user_id: int, user: dict = Depends(requ
     profile_user = await auth.get_user(user_id)
     if not profile_user:
         return RedirectResponse("/online", status_code=302)
-    is_online = bool(
-        profile_user.get("last_seen")
-        and profile_user["last_seen"] > (datetime.now(timezone.utc) - timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
-    )
+    is_online = _is_recently_seen(profile_user)
     can_edit = user["id"] == user_id or auth.is_admin(user)
     return templates.TemplateResponse(
         "profile.html",
@@ -144,21 +155,26 @@ async def update_about(request: Request, user_id: int, about_me: str = Form(""),
     """Update a user's About Me text."""
     if user["id"] != user_id and not auth.is_admin(user):
         return RedirectResponse(f"/user/{user_id}", status_code=302)
-    if not auth.is_admin(user) and contains_url(about_me):
+    form, error = validate(ProfileText, text=about_me)
+    if not error and not auth.is_admin(user) and contains_url(about_me):
+        error = "URLs are not allowed in About Me."
+    if error:
         profile_user = await auth.get_user(user_id)
-        is_online = True
-        can_edit = True
+        if profile_user:
+            # Keep what the user typed so the edit is not lost on rejection.
+            profile_user["about_me"] = about_me
         return templates.TemplateResponse(
             "profile.html",
             _add_globals(request, {
                 "user": user,
                 "profile_user": profile_user,
-                "is_online": is_online,
-                "can_edit": can_edit,
-                "error": "URLs are not allowed in About Me.",
+                "is_online": _is_recently_seen(profile_user),
+                "can_edit": True,
+                "error": error,
             }),
+            status_code=400,
         )
-    await auth.update_about_me(user_id, about_me)
+    await auth.update_about_me(user_id, form.text)
     return RedirectResponse(f"/user/{user_id}", status_code=302)
 
 
@@ -167,13 +183,20 @@ async def update_landing_message(request: Request, user_id: int, landing_message
     """Update the landing page message (superadmin only)."""
     if not auth.is_superadmin(user) or user["id"] != user_id:
         return RedirectResponse(f"/user/{user_id}", status_code=302)
-    await auth.update_landing_message(user_id, landing_message)
+    form, error = validate(ProfileText, text=landing_message)
+    if error:
+        return RedirectResponse(f"/user/{user_id}", status_code=302)
+    await auth.update_landing_message(user_id, form.text)
     return RedirectResponse(f"/user/{user_id}", status_code=302)
 
 
-@router.get("/logout")
+@router.post("/logout")
 async def logout(request: Request):
-    """Destroy the user's session and clear the session cookie."""
+    """Destroy the user's session and clear the session cookie.
+
+    POST rather than GET: a SameSite=Lax cookie is still sent on top-level
+    cross-site navigation, so a GET logout can be triggered from any page.
+    """
     token = request.cookies.get("session_token")
     if token:
         await auth.delete_session(token)

@@ -7,7 +7,10 @@ channel CRUD, DM initiation, and admin broadcast announcements.
 
 import asyncio
 import json
+import logging
 import re
+
+import anyio
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -16,7 +19,10 @@ from lib import auth, chat
 from lib.chat import chat_manager
 from lib.content_filter import contains_url
 from lib.deps import require_user, require_admin
-from lib.web_server import templates, _add_globals
+from lib.models import ChatMessage, validate
+from lib.templating import templates, _add_globals
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -25,7 +31,13 @@ _CHANNEL_NAME_RE = re.compile(r"^[a-z0-9_-]+$")
 
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request, channel: str = "lobby", user: dict = Depends(require_user)):
-    """Render the chat page with sidebar data for the given channel."""
+    """Render the chat page with sidebar data for the given channel.
+
+    The requested channel is authorized before any of its history is read,
+    matching the check the WebSocket endpoint performs on switch.
+    """
+    if await chat.validate_channel(channel, user["id"]):
+        return RedirectResponse("/chat", status_code=303)
     if chat.is_dm_channel(channel):
         await chat.mark_dm_channel_seen(user["id"], channel)
     channels = await chat.list_channels()
@@ -87,9 +99,10 @@ async def announce(
     user: dict = Depends(require_admin),
 ):
     """Broadcast an announcement to all connected WebSocket clients. Admin only."""
-    message = message.strip()
-    if message:
-        await chat_manager.broadcast_all(user["username"], message)
+    msg, error = validate(ChatMessage, message=message.strip())
+    if error:
+        return RedirectResponse("/chat?error=invalid_message", status_code=303)
+    await chat_manager.broadcast_all(user["username"], msg.message)
     return RedirectResponse("/chat", status_code=303)
 
 
@@ -136,7 +149,6 @@ async def ws_chat(websocket: WebSocket):
         "channel": "lobby",
         "queue": chat_manager.subscribe("lobby"),
     }
-
     try:
         # Send recent history for initial channel
         recent = await chat_manager.recent_messages("lobby")
@@ -146,7 +158,14 @@ async def ws_chat(websocket: WebSocket):
             """Read incoming WebSocket messages and dispatch by type."""
             while True:
                 data = await websocket.receive_text()
-                parsed = json.loads(data)
+                try:
+                    parsed = json.loads(data)
+                except json.JSONDecodeError:
+                    await websocket.send_json({"type": "error", "message": "Malformed message."})
+                    continue
+                if not isinstance(parsed, dict):
+                    await websocket.send_json({"type": "error", "message": "Malformed message."})
+                    continue
                 if parsed.get("type") == "pong":
                     continue
                 if parsed.get("type") == "switch":
@@ -169,12 +188,17 @@ async def ws_chat(websocket: WebSocket):
                     history = await chat_manager.recent_messages(new_channel)
                     await websocket.send_json({"type": "history", "messages": history})
                     continue
-                msg_text = parsed.get("message", "")
-                if not auth.is_admin(user) and contains_url(msg_text):
+                msg, err = validate(
+                    ChatMessage, channel=state["channel"], message=parsed.get("message", "")
+                )
+                if err:
+                    await websocket.send_json({"type": "error", "message": err})
+                    continue
+                if not auth.is_admin(user) and contains_url(msg.message):
                     await websocket.send_json({"type": "error", "message": "URLs are not allowed in chat messages."})
                     continue
                 await chat_manager.broadcast(
-                    state["channel"], user["username"], msg_text
+                    state["channel"], user["username"], msg.message
                 )
 
         async def _send():
@@ -192,8 +216,30 @@ async def ws_chat(websocket: WebSocket):
                 await asyncio.sleep(20)
                 await websocket.send_json({"type": "ping"})
 
-        await asyncio.gather(_recv(), _send(), _ping())
-    except (WebSocketDisconnect, Exception):
+        # Run the three loops under one cancel scope. asyncio.gather would
+        # leave the siblings running when one raises, stranding _send on a
+        # queue nothing will ever feed again; when any loop ends here, the
+        # scope cancels the rest. anyio is what Starlette itself runs under,
+        # so cancellation unwinds cleanly through the ASGI server.
+        async with anyio.create_task_group() as task_group:
+
+            async def _run(loop):
+                """Run one loop, then bring the whole connection down with it."""
+                try:
+                    await loop()
+                except WebSocketDisconnect:
+                    pass
+                except Exception:
+                    logger.exception("chat websocket failed for user %s", user["id"])
+                finally:
+                    task_group.cancel_scope.cancel()
+
+            task_group.start_soon(_run, _recv)
+            task_group.start_soon(_run, _send)
+            task_group.start_soon(_run, _ping)
+    except WebSocketDisconnect:
         pass
+    except Exception:
+        logger.exception("chat websocket failed for user %s", user["id"])
     finally:
         chat_manager.unsubscribe(state["channel"], state["queue"])

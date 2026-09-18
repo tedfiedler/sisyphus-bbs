@@ -12,6 +12,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ["SISYPHUS_DB"] = os.path.join(tempfile.gettempdir(), "sisyphus_test.db")
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiters():
+    """Rate limiters are module-level, so clear them between tests."""
+    from lib.routes import auth_routes
+
+    for limiter in (auth_routes._login_limiter, auth_routes._register_limiter):
+        limiter._events.clear()
+    yield
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def reset_db():
     """Reset database before each test."""

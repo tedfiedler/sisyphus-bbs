@@ -6,7 +6,13 @@ from lib import auth
 
 
 async def get_current_user(request: Request) -> dict | None:
-    """Extract and return the current user from the session cookie, or None if unauthenticated."""
+    """Return the current user from the session cookie, or None if unauthenticated.
+
+    The session middleware resolves this once per request; reuse its result
+    rather than querying for the same token again.
+    """
+    if getattr(request.state, "user_resolved", False):
+        return request.state.user
     token = request.cookies.get("session_token")
     if not token:
         return None

@@ -56,6 +56,7 @@
             <td>
                 {% if playable[loop.index0] %}
                 <form method="post" action="{{ play_action }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="card_index" value="{{ loop.index0 }}">
                     <button type="submit" class="btn-small">Play</button>
                 </form>
@@ -65,6 +66,7 @@
             </td>
             <td>
                 <form method="post" action="{{ discard_action }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="card_index" value="{{ loop.index0 }}">
                     <button type="submit" class="btn-small" style="background:var(--border);color:var(--fg)">Discard</button>
                 </form>
@@ -131,6 +133,7 @@
         You must play <strong>Roll</strong> before you can drive. Max two <strong>200 mi</strong> cards per game.
     </p>
     <form method="post" action="/games/mille/new" style="margin-top:12px">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">Play vs CPU</button>
     </form>
 </div>
@@ -147,10 +150,12 @@
     <p><strong style="color:var(--accent)">{{ incoming_invite.from_username }}</strong> wants to play!</p>
     <div style="display:flex;gap:8px;margin-top:10px">
         <form method="post" action="/games/mille/invite/accept">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
             <button type="submit">Accept</button>
         </form>
         <form method="post" action="/games/mille/invite/decline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
             <button type="submit" style="background:var(--border);color:var(--fg)">Decline</button>
         </form>
@@ -186,6 +191,7 @@
             <td>{{ u.username }}</td>
             <td>
                 <form method="post" action="/games/mille/invite" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="to_user_id" value="{{ u.id }}">
                     <button type="submit" class="btn-small">Challenge</button>
                 </form>
@@ -205,6 +211,7 @@
     <p>Waiting for <strong style="color:var(--accent)">{{ invite.to_username }}</strong> to accept your challenge...</p>
     <p class="meta">Expires in {{ remaining }}s</p>
     <form method="post" action="/games/mille/invite/cancel" style="margin-top:10px">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" style="background:var(--border);color:var(--fg)">Cancel</button>
     </form>
 </div>
@@ -226,10 +233,12 @@
     <p>The CPU played a hazard, but you have <strong style="color:var(--accent)">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
     <div style="display:flex;gap:8px;margin-top:10px">
         <form method="post" action="/games/mille/coup">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="yes">
             <button type="submit">Yes &mdash; Play it!</button>
         </form>
         <form method="post" action="/games/mille/coup">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="no">
             <button type="submit" style="background:var(--border);color:var(--fg)">No &mdash; Decline</button>
         </form>
@@ -268,6 +277,7 @@
 
 <div class="box">
     <form method="post" action="/games/mille/new" style="margin-top:0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">Play Again</button>
     </form>
 </div>
@@ -281,6 +291,7 @@
 
 <div class="box">
     <form method="post" action="/games/mille/pvp/quit">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
     </form>
 </div>
@@ -298,6 +309,7 @@
 
 <div class="box">
     <form method="post" action="/games/mille/pvp/quit">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
     </form>
 </div>
@@ -313,10 +325,12 @@
     <p><strong>{{ opp.name }}</strong> played a hazard, but you have <strong style="color:var(--accent)">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
     <div style="display:flex;gap:8px;margin-top:10px">
         <form method="post" action="/games/mille/pvp/coup">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="yes">
             <button type="submit">Yes &mdash; Play it!</button>
         </form>
         <form method="post" action="/games/mille/pvp/coup">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="no">
             <button type="submit" style="background:var(--border);color:var(--fg)">No &mdash; Decline</button>
         </form>
@@ -348,6 +362,7 @@
 
 <div class="box">
     <form method="post" action="/games/mille/pvp/quit">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">Back to Lobby</button>
     </form>
 </div>

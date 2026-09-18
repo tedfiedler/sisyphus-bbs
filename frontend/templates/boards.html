@@ -28,6 +28,7 @@
 <div class="box">
     <h2>Create Board</h2>
     <form method="post" action="/boards/create">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="text" name="name" placeholder="Board name" required>
         <input type="text" name="description" placeholder="Description (optional)">
         <button type="submit">Create Board</button>

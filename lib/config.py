@@ -14,6 +14,9 @@ Environment variables:
     SISYPHUS_SESSION_HOURS Session cookie lifetime in hours.
     SISYPHUS_SSL_CERT      Path to TLS certificate PEM file.
     SISYPHUS_SSL_KEY       Path to TLS private key PEM file.
+    SISYPHUS_TRUST_PROXY   Set to 1 when running behind a reverse proxy that
+                           sets X-Forwarded-For, so rate limiting can see the
+                           real client address.
 """
 
 import os
@@ -30,6 +33,7 @@ WEB_PORT = int(os.getenv("SISYPHUS_WEB_PORT", "8000"))
 FILE_STORE = Path(os.getenv("SISYPHUS_FILES", str(BASE_DIR / "file_store")))
 BBS_NAME = os.getenv("SISYPHUS_NAME", "Sisyphus BBS")
 SESSION_EXPIRY_HOURS = int(os.getenv("SISYPHUS_SESSION_HOURS", "24"))
+TRUST_PROXY = os.getenv("SISYPHUS_TRUST_PROXY", "").strip().lower() in {"1", "true", "yes"}
 
 TEMPLATES_DIR = BASE_DIR / "frontend" / "templates"
 STATIC_DIR = BASE_DIR / "frontend" / "static"

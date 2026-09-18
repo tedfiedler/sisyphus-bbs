@@ -114,6 +114,21 @@ CREATE TABLE IF NOT EXISTS dm_channel_seen (
     last_seen_at TIMESTAMP NOT NULL,
     UNIQUE(user_id, channel)
 );
+
+-- Indexes for the lookups the app makes on every page: thread and board
+-- listings, like counts, channel history, and session expiry sweeps.
+CREATE INDEX IF NOT EXISTS idx_posts_thread ON posts(thread_id);
+CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_threads_board ON threads(board_id);
+CREATE INDEX IF NOT EXISTS idx_threads_author ON threads(author_id);
+CREATE INDEX IF NOT EXISTS idx_post_likes_post ON post_likes(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_likes_user ON post_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON chat_messages(channel, id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_files_uploader ON files(uploader_id);
+CREATE INDEX IF NOT EXISTS idx_game_scores_user ON game_scores(user_id);
+CREATE INDEX IF NOT EXISTS idx_login_days_user ON login_days(user_id);
 """
 
 

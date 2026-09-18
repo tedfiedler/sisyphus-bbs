@@ -11,7 +11,8 @@ from lib import auth, boards
 from lib.content_filter import contains_url
 from lib.db import get_db
 from lib.deps import require_user, require_admin
-from lib.web_server import templates, _add_globals
+from lib.models import BoardCreate, PostCreate, ThreadCreate, validate
+from lib.templating import templates, _add_globals
 
 router = APIRouter()
 
@@ -26,7 +27,10 @@ async def board_list(request: Request, user: dict = Depends(require_user)):
 @router.post("/boards/create")
 async def board_create(request: Request, name: str = Form(), description: str = Form(""), user: dict = Depends(require_admin)):
     """Create a new board and redirect to the board listing."""
-    await boards.create_board(name, description)
+    form, error = validate(BoardCreate, name=name, description=description)
+    if error:
+        return RedirectResponse("/boards", status_code=302)
+    await boards.create_board(form.name, form.description)
     return RedirectResponse("/boards", status_code=302)
 
 
@@ -45,7 +49,10 @@ async def board_view(request: Request, board_id: int, user: dict = Depends(requi
 @router.post("/boards/{board_id}/thread")
 async def thread_create(request: Request, board_id: int, subject: str = Form(), body: str = Form(), user: dict = Depends(require_user)):
     """Create a new thread with an initial post and redirect to it."""
-    if not auth.is_admin(user) and (contains_url(subject) or contains_url(body)):
+    form, error = validate(ThreadCreate, subject=subject, body=body)
+    if not error and not auth.is_admin(user) and (contains_url(subject) or contains_url(body)):
+        error = "URLs are not allowed in posts."
+    if error:
         board = await boards.get_board(board_id)
         thread_list = await boards.list_threads(board_id)
         return templates.TemplateResponse(
@@ -53,10 +60,11 @@ async def thread_create(request: Request, board_id: int, subject: str = Form(), 
             _add_globals(request, {
                 "user": user, "board": board, "threads": thread_list,
                 "posts": None, "thread": None,
-                "error": "URLs are not allowed in posts.",
+                "error": error,
             }),
+            status_code=400,
         )
-    thread_id = await boards.create_thread(board_id, subject, user["id"], body)
+    thread_id = await boards.create_thread(board_id, form.subject, user["id"], form.body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)
 
 
@@ -88,8 +96,13 @@ async def post_like(request: Request, post_id: int, user: dict = Depends(require
 @router.post("/thread/{thread_id}/reply")
 async def thread_reply(request: Request, thread_id: int, body: str = Form(), user: dict = Depends(require_user)):
     """Add a reply post to an existing thread."""
-    if not auth.is_admin(user) and contains_url(body):
-        thread = await boards.get_thread(thread_id)
+    thread = await boards.get_thread(thread_id)
+    if not thread:
+        return RedirectResponse("/boards", status_code=302)
+    form, error = validate(PostCreate, body=body)
+    if not error and not auth.is_admin(user) and contains_url(body):
+        error = "URLs are not allowed in posts."
+    if error:
         board = await boards.get_board(thread["board_id"])
         post_list = await boards.list_posts(thread_id, user["id"])
         return templates.TemplateResponse(
@@ -97,8 +110,9 @@ async def thread_reply(request: Request, thread_id: int, body: str = Form(), use
             _add_globals(request, {
                 "user": user, "board": board, "thread": thread,
                 "posts": post_list, "threads": None,
-                "error": "URLs are not allowed in posts.",
+                "error": error,
             }),
+            status_code=400,
         )
-    await boards.create_post(thread_id, user["id"], body)
+    await boards.create_post(thread_id, user["id"], form.body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)

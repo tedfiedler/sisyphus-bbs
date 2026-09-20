@@ -20,7 +20,7 @@ from lib.climb.rules import Outcome
 from lib.climb.store import AGORA, Player
 
 SLOPES, FIGHT, DEAD, HYGIEIA, VAULT = "slopes", "fight", "dead", "hygieia", "vault"
-PLACES = {AGORA, SLOPES, HYGIEIA, VAULT}
+FORGE, AEGIS, PALAESTRA, ORCHARD = "forge", "aegis", "palaestra", "orchard"
 
 
 class NotOffered(Exception):
@@ -153,14 +153,79 @@ def screen(player: Player) -> Screen:
         choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
         return Screen("The Ferryman's Vault", list(text.VAULT), choices)
 
+    if player.scene in (FORGE, AEGIS):
+        return _shop(c, "weapon" if player.scene == FORGE else "armour")
+
+    if player.scene == ORCHARD:
+        lines = list(text.ORCHARD) + [text.ORCHARD_SEEDS.format(seeds=_seeds(c.seeds))]
+        choices = []
+        if rules.can_take_gift(c):
+            choices = [
+                Choice("s", f"(S)trength +{data.GIFTS['strength']}", "gift:strength"),
+                Choice("d", f"(D)efence +{data.GIFTS['defence']}", "gift:defence"),
+                Choice("v", f"(V)igour: max hit points +{data.GIFTS['vigour']}", "gift:vigour"),
+            ]
+        else:
+            lines.append(text.ORCHARD_POOR)
+        choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
+        return Screen("The Orchard Gate", lines, choices)
+
+    if player.scene == PALAESTRA:
+        lines = list(text.PALAESTRA)
+        choices = []
+        needed = rules.xp_to_next(c.level)
+        if needed is None:
+            lines.append(text.GATE_TOP)
+        else:
+            name = data.GATEKEEPERS[c.level - 1]
+            lines.append(text.GATE_AHEAD.format(band=data.BANDS[c.level - 1], name=name))
+            if c.gate_tried_today:
+                lines.append(text.GATE_TRIED)
+            elif rules.can_face_gatekeeper(c):
+                lines.append(text.GATE_READY)
+                choices.append(Choice("f", f"(F)ace {name}", "gate"))
+            else:
+                lines.append(text.GATE_NOT_READY.format(xp=c.xp, needed=needed))
+        choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
+        return Screen("The Palaestra", lines, choices)
+
     lines = list(text.AGORA)
     if c.fights_left == 0:
         lines.append(text.AGORA_SPENT)
     return Screen("The Agora", lines, [
         Choice("c", "(C)limb the Slopes", f"go:{SLOPES}"),
+        Choice("f", "Brontes' (F)orge", f"go:{FORGE}"),
+        Choice("a", "(A)egis Row", f"go:{AEGIS}"),
         Choice("h", "House of (H)ygieia", f"go:{HYGIEIA}"),
         Choice("v", "The Ferryman's (V)ault", f"go:{VAULT}"),
+        Choice("p", "The (P)alaestra", f"go:{PALAESTRA}"),
+        Choice("o", "The (O)rchard Gate", f"go:{ORCHARD}"),
     ])
+
+
+def _seeds(n: int) -> str:
+    return "one seed" if n == 1 else f"{n} seeds" if n else "no seeds"
+
+
+def _shop(c: rules.Climber, kind: str) -> Screen:
+    """A shop lists what it would sell you; only what you can pay for is a button."""
+    names = data.WEAPONS if kind == "weapon" else data.ARMOURS
+    carried = c.weapon if kind == "weapon" else c.armour
+    lines = list(text.FORGE if kind == "weapon" else text.AEGIS_ROW)
+    lines.append(text.CARRYING.format(item=names[carried - 1]))
+    choices = []
+    offers = rules.gear_on_offer(c, kind)
+    for number, (tier, price, affordable) in enumerate(offers, start=1):
+        item = names[tier - 1]
+        if affordable:
+            lines.append(text.ON_OFFER.format(item=item, price=price))
+            choices.append(Choice(str(number), f"({number}) Buy the {item}", f"buy:{kind}:{tier}"))
+        else:
+            lines.append(text.TOO_DEAR.format(item=item, price=price, purse=c.purse))
+    if not offers:
+        lines.append(text.BEST_THERE_IS if carried == data.LEVELS else text.NOTHING_BETTER)
+    choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
+    return Screen("Brontes' Forge" if kind == "weapon" else "Aegis Row", lines, choices)
 
 
 def status(player: Player) -> dict:
@@ -194,6 +259,15 @@ def _after_blows(rng: Random, player: Player) -> None:
     if fight.outcome is Outcome.ONGOING:
         return
     player.fight = None
+    if fight.foe.kind == rules.GATEKEEPER:
+        _, won, lost = text.GATEKEEPERS[c.level - 1]
+        if fight.outcome is Outcome.WON:
+            rules.apply_level_up(c)
+            player.notice += [won, text.LEVEL_UP.format(band=data.BANDS[c.level - 1], level=c.level)]
+        else:
+            player.notice.append(lost)
+        player.scene = PALAESTRA
+        return
     if fight.outcome is Outcome.WON:
         spoils = rules.apply_victory(rng, c, fight)
         player.notice.append(text.SPOILS.format(drachmae=spoils.drachmae, xp=spoils.xp))
@@ -233,6 +307,27 @@ def act(rng: Random, player: Player, action: str, amount: int = 0) -> None:
         rules.take_turn(rng, c, player.fight, action.removeprefix("fight:"))
         player.notice += _narrate(player.fight)
         _after_blows(rng, player)
+
+    elif action == "gate":
+        c.gate_tried_today = True
+        level = c.level
+        player.fight = rules.open_fight(rng, c, rules.gatekeeper(level, c.ascents))
+        player.scene = FIGHT
+        player.notice.append(text.GATE_OPENS.format(band=data.BANDS[level - 1], name=data.GATEKEEPERS[level - 1]))
+        player.notice.append(text.GATEKEEPERS[level - 1][0])
+        player.notice += _narrate(player.fight)
+        _after_blows(rng, player)
+
+    elif action.startswith("buy:"):
+        _, kind, tier = action.split(":")
+        names = data.WEAPONS if kind == "weapon" else data.ARMOURS
+        cost = rules.apply_purchase(c, kind, int(tier))
+        bought = text.BOUGHT_WEAPON if kind == "weapon" else text.BOUGHT_ARMOUR
+        player.notice.append(bought.format(cost=cost, item=names[int(tier) - 1]))
+
+    elif action.startswith("gift:"):
+        gift = action.removeprefix("gift:")
+        player.notice.append(text.GIFTS[gift].format(n=rules.apply_gift(c, gift)))
 
     elif action in ("heal:all", "heal:some"):
         points = rules.affordable_healing(c, c.purse) if action == "heal:all" else amount

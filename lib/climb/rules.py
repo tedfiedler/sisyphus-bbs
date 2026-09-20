@@ -448,6 +448,42 @@ def apply_purchase(c: Climber, kind: str, tier: int) -> int:
     return cost
 
 
+def can_take_gift(c: Climber) -> bool:
+    return c.alive and c.seeds >= data.SEEDS_PER_GIFT
+
+
+def apply_gift(c: Climber, gift: str) -> int:
+    """Trade two seeds for a permanent gift that survives every ascent.
+
+    Returns the size of the gift. Vigour raises current as well as maximum
+    hit points, so it never leaves you looking wounded.
+    """
+    if gift not in data.GIFTS:
+        raise ValueError(f"unknown gift: {gift!r}")
+    if not can_take_gift(c):
+        raise ValueError("not enough seeds")
+    size = data.GIFTS[gift]
+    c.seeds -= data.SEEDS_PER_GIFT
+    if gift == "strength":
+        c.strength_gift += size
+    elif gift == "defence":
+        c.defence_gift += size
+    else:
+        c.hp_gift += size
+        c.hp += size
+    return size
+
+
+def gear_on_offer(c: Climber, kind: str) -> list[tuple[int, int, bool]]:
+    """Tiers a shop will show: (tier, price after trade-in, affordable now?)."""
+    _, attr = _gear(kind)
+    top = min(data.LEVELS, c.level + 1)
+    return [
+        (tier, gear_cost(c, kind, tier), gear_cost(c, kind, tier) <= c.purse)
+        for tier in range(getattr(c, attr) + 1, top + 1)
+    ]
+
+
 def apply_deposit(c: Climber, amount: int) -> None:
     if not 0 < amount <= c.purse:
         raise ValueError("cannot deposit that")

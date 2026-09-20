@@ -151,6 +151,10 @@ TITLES = (
     (3, "Thrice-Risen"), (2, "Twice-Risen"), (1, "Apple-Bearer"), (0, "Climber"),
 )
 
+# The Orchard Gate: what two pomegranate seeds buy, permanently.
+SEEDS_PER_GIFT = 2
+GIFTS = {"strength": 2, "defence": 2, "vigour": 5}
+
 CREDIT = "In the tradition of the BBS door games of the early '90s."
 
 assert len(CREATURES) == LEVELS and all(len(band) == CREATURES_PER_BAND for band in CREATURES)

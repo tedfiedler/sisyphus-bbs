@@ -563,7 +563,7 @@ are the argument for having one:
 |---|---|---|
 | 1 ✅ | `data.py`, `rules.py`, and the simulator driving them | **Done 2026-09-20.** Every rule has a test with scripted dice (`tests/test_climb_rules.py`); the balance tests pass (`tests/test_climb_balance.py`). |
 | 2 ✅ | Schema, `store.py`, dawn, scenes, the Agora, the Slopes, combat, death, Hygieia, the Vault | **Done 2026-09-20.** A character can be created and can fight, die, heal, bank, and wake tomorrow — through the routes, under test (`tests/test_climb_routes.py`), and by keyboard alone in a real browser under the CSP. |
-| 3 | Forge, Aegis Row, Palaestra and gatekeepers, the Orchard Gate | Level 1 → 12 is playable. |
+| 3 ✅ | Forge, Aegis Row, Palaestra and gatekeepers, the Orchard Gate | **Done 2026-09-20.** Level 1 → 12 is playable: a test bot that can see only what the screens offer climbs from the Foothills to the Garden Wall in about a month of game days (`tests/test_climb_town.py`). |
 | 4 | Ladon, ascent and reset, titles, the Stele, `game_scores` | The whole loop closes. |
 | 5 | The Lethe House: Orpheus, the wall, rooms, Nikandros; the Herald; events | The town feels inhabited with one player. |
 | 6 | The Camp and robbery; the key | Two-player tests, as for Mille Bornes PvP. |

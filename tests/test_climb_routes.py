@@ -100,7 +100,9 @@ async def test_a_newcomer_chooses_a_calling(alice, dice):
 
         html = (await client.get(PAGE)).text
         assert text.BEGUN["torch"] in html
-        assert offered(html) == ["go:slopes", "go:hygieia", "go:vault"]
+        assert offered(html) == [
+            "go:slopes", "go:forge", "go:aegis", "go:hygieia", "go:vault", "go:palaestra", "go:orchard",
+        ]
 
         # Asking again does not replace the climber you have.
         await begin(client, data.SPEAR)
@@ -427,9 +429,10 @@ async def test_every_choice_is_a_real_button_with_a_hotkey(alice, dice):
 async def test_every_screen_has_distinct_hotkeys():
     players = []
     for calling in data.CALLINGS:
-        for scene in ("agora", "slopes", "hygieia", "vault", "fight"):
+        for scene in ("agora", "slopes", "hygieia", "vault", "fight", "forge", "aegis", "palaestra", "orchard"):
             c = rules.new_climber(calling)
             c.rank, c.skill_left, c.hp, c.vault = 40, 5, 3, 10
+            c.level, c.purse, c.seeds, c.xp = 9, 10**9, 4, 10**9       # everything on offer at once
             fight = rules.Fight(foe=rules.creature(1, 1), foe_hp=5) if scene == "fight" else None
             players.append(store.Player(user_id=1, climber=c, scene=scene, fight=fight))
     for player in players + [None]:

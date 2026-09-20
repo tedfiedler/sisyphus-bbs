@@ -326,6 +326,15 @@ HERALD_QUIET = "\"NOTHING HAS HAPPENED,\" bellows Stentor, \"AND I WILL KEEP YOU
 
 # {name} is a climber; {detail} depends on the kind of news. Variants rotate.
 NEWS = {
+    "wed_regular": (
+        "{name} and {detail} were married at the festival fire. Nikandros wept, and blamed the smoke.",
+    ),
+    "accept": (
+        "{name} and {detail} were married at the festival fire. They met on the mountain. Most people only meet goats.",
+    ),
+    "divorce": (
+        "{name} and {detail} are no longer married. Stentor has been asked to say no more, and will not. NO MORE.",
+    ),
     "robbed": (
         "{name} robbed {detail} in the night. {detail} is advised to bank their coin.",
         "{detail} woke poorer. {name} was seen leaving the Camp, whistling.",
@@ -511,3 +520,104 @@ OTHERS = (
     "up. We see what they carry. We see where they sleep.\"",
 )
 OTHERS_EMPTY = "\"Just you,\" she says. \"For now.\""
+
+# ---------------------------------------------------------------------------
+# The corner table: Kalliste and Theron
+# ---------------------------------------------------------------------------
+
+CORNER = (
+    "The corner table. Kalliste, who makes the best wine on this side of the "
+    "mountain and knows it, is arguing with Theron, who hunts the high pines and "
+    "is shy everywhere except there.",
+)
+REGULAR_NAMES = {"kalliste": "Kalliste", "theron": "Theron"}
+COURT_STEPS = (
+    "catch their eye", "stand them a cup of wine", "trade stories", "walk by the river",
+    "bring a gift", "dance at the festival fire", "meet the family", "ask",
+)
+COURT_STATUS = "With {name} you have got as far as: {done}. Next: {next} (Charm {need})."
+COURT_FRESH = "You have not tried your luck with either of them. It starts with catching an eye (Charm 1)."
+COURT_WED = "You are married to {name}, who saves you the good chair."
+COURT_NEED_CHARM = "To {next} you would need Charm {need}. You have {charm}. Be kinder to goats."
+COURT_NEED_GIFT = "A proper gift will cost {price} drachmae, and you do not have it in hand."
+COURT_TOMORROW = "You have made your move for today. Hovering is not attractive."
+COURT_TAKEN = "Your heart is spoken for elsewhere, and both of them know it."
+COURT_OTHER = "{name} has noticed you courting {other}. One at a time."
+
+# What happens on each step, per regular, when it goes well.
+COURT_WON = {
+    "kalliste": (
+        "Kalliste looks up from her cup, finds you looking, and does not look away first. She never does.",
+        "\"You're buying? Then I'm choosing,\" says Kalliste, and orders her own vintage. She lets you taste it. It is very good and she watches you realise that.",
+        "You tell her about the Tax Collector. She tells you about the year the frost took the whole south slope, and what she did about it. You talk until Nikandros puts the stools up.",
+        "You walk by the river. She names every vineyard you can see, and who owns it, and what they are doing wrong. At the bridge she takes your arm as if it had been her idea.",
+        "She turns the gift over, twice. \"Nobody buys me things,\" she says. \"They assume I have them.\" She wears it the next day, where everyone can see.",
+        "At the festival fire Kalliste dances the way she argues: to win. You keep up, just. When the music stops she is laughing too hard to say anything cutting.",
+        "Her mother inspects you like a doubtful cask. Her three brothers inspect you like a delivery. By the end of the evening you have been told you may call again, which Kalliste says is unprecedented.",
+        "\"Yes,\" says Kalliste, before you have finished. \"Obviously. I decided at the river. I have been waiting for you to catch up.\"",
+    ),
+    "theron": (
+        "Theron glances up, sees you, goes red to the ears, and knocks over the salt. But he smiles.",
+        "He says thank you for the wine three times. Then, to the cup, very quietly: \"People don't usually sit with me. It's nice.\"",
+        "Once he starts on the high pines he forgets to be shy: the wolves he knows by sight, the place where you can see both seas. You could listen all night, and do.",
+        "You walk by the river. He shows you an otter's slide you would never have seen. He holds your hand as if it might startle.",
+        "He opens the gift very carefully and is silent so long you think you have got it wrong. \"I'll keep it in the hills with me,\" he says at last, and you understand that is the highest place he has.",
+        "Theron cannot dance and knows it and dances anyway, because you asked. It is the bravest thing anyone does in Ephyra that year.",
+        "His family live a day's walk up, in a house that smells of pine smoke. His grandmother, who is tiny and terrifying, looks you up and down and says, \"Finally.\"",
+        "He has clearly rehearsed an answer in case you ever asked. He forgets all of it. \"Yes,\" he manages. \"Yes. Sorry. Yes.\"",
+    ),
+}
+# When it does not. One per step; {name} is whoever you tried it with.
+COURT_LOST = (
+    "{name} looks up, but it turns out to be at someone behind you.",
+    "{name} accepts the wine, thanks you, and goes on talking to the table.",
+    "You get halfway through your best story and realise {name} has heard it. From the person it actually happened to.",
+    "It rains. {name} remembers somewhere to be.",
+    "{name} thanks you for the gift in the tone people use for socks.",
+    "You tread on {name}'s foot in front of the whole festival. Twice. The same foot.",
+    "The family are polite. It is the politeness that worries you.",
+    "\"Ask me again,\" says {name}, not unkindly, \"when you mean it as much as I would have to.\"",
+)
+COURT_XP = "Whatever else, you learn something: {xp} XP."
+COURT_CHARMED = "You come away a little easier in your own skin: Charm +1."
+WEDDING_REGULAR = "You and {name} are married at the festival fire, with half the town watching and Orpheus, for once, playing something cheerful."
+PARTED = "You tell {name} it is over. It is a small town; you will see them every day. Charm -2."
+SPOUSE_GIFT = "{name} left {n} drachmae by the bed and a note that says to be careful."
+SPOUSE_FIGHTS = "{name} was on the mountain yesterday and came home full of advice. You can climb {n} more times today."
+
+# ---------------------------------------------------------------------------
+# Other climbers
+# ---------------------------------------------------------------------------
+
+HEARTS = (
+    "There are other climbers in Ephyra, and some of them are good company.",
+)
+HEART_CLOSED = (
+    "Your heart is closed to other climbers: nobody can flirt with you, and you "
+    "cannot with them. That is how everyone starts. It is entirely up to you."
+)
+HEART_OPEN = "Your heart is open to other climbers who have opened theirs."
+HEART_OPENED = "You let it be known, in the small ways these things are known, that you would not mind company."
+HEART_SHUT = "You let it be known that you are here to climb. Nobody can flirt with you now, and nothing already between you and anyone is lost."
+NOBODY_OPEN = "Nobody else has an open heart just now."
+PERSON = "{name}, {title}, in {band}."
+PERSON_NOTE = {
+    "spouse": " You are married.",
+    "proposed_to_you": " They have asked you to marry them.",
+    "you_proposed": " You have asked; they have not answered.",
+    "flirted": " They have flirted with you.",
+}
+SUITOR_AFFINITY = "Between you and {name}: {affinity} out of the {needed} it takes before anyone asks anything serious."
+FLIRTED = "You catch {name}'s eye across the Lethe House and hold it a moment longer than you need to."
+MAIL_FLIRT = "{name} caught your eye across the Lethe House, and held it a moment longer than they needed to."
+PROPOSED = "You ask {name} to marry you. Now you wait."
+MAIL_PROPOSAL = "{name} has asked you to marry them. You will find them at the corner table, trying to look unconcerned."
+ACCEPTED = "You say yes. You and {name} are married at the festival fire."
+MAIL_ACCEPTED = "{name} said yes. You are married. Orpheus played."
+MARRY_TOO_LATE = "You go to say yes and find that {name} is no longer free to hear it."
+DECLINED = "You tell {name} no, as kindly as it can be told."
+MAIL_DECLINED = "{name} has said no. They were kind about it, which is worse."
+DOOR_SHUT = "You close the door on {name}. They will not be told. Nothing they send will reach you."
+DOOR_OPENED = "You open the door to {name} again."
+DIVORCED = "You and {name} are no longer married. Charm -2."
+MAIL_DIVORCED = "{name} has ended your marriage."

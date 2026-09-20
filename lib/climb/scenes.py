@@ -26,6 +26,7 @@ SUMMIT, STELE = "summit", "stele"
 LETHE, WALL, HERALD = "lethe", "wall", "herald"
 EVENT, FIRE = "event", "fire"
 CAMP, OTHERS = "camp", "others"
+CORNER, HEARTS, SUITOR = "corner", "hearts", "suitor"
 
 # What a player's `happenings` may contain, for the route to act on: each is
 # (kind, detail). The first four are news; WROTE carries a line for the wall.
@@ -35,6 +36,30 @@ KID_HOME = "kid"
 # (victim id and name, and for FELL_TO the purse the robber dropped), because
 # the route has to settle them against the victim's own row.
 ATTEMPTED, ROBBED, FELL_TO = "attempted", "robbed", "fell_to"
+
+
+# Courtship. WED_REGULAR's detail is the regular's name; the rest carry
+# {"id", "name"} for the route to settle against the other climber's row.
+WED_REGULAR = "wed_regular"
+FLIRT, PROPOSE, ACCEPT, DECLINE, DIVORCE = "flirt", "propose", "accept", "decline", "divorce"
+SHUT_DOOR, OPEN_DOOR = "shut_door", "open_door"
+
+
+@dataclass
+class Person:
+    """Another climber as the hearts screens see them, prepared by the route."""
+
+    user_id: int
+    name: str
+    title: str
+    band: str
+    open_heart: bool
+    free: bool                      # not married to anyone
+    affinity: int = 0
+    flirted_with_me: bool = False
+    proposal: str = ""              # "", "from_them", or "from_me"
+    spouse: bool = False
+    door_shut: bool = False         # by me, to them
 
 
 @dataclass
@@ -98,8 +123,13 @@ def begin(action: str) -> tuple[rules.Climber, list[str]]:
 # Dawn
 # ---------------------------------------------------------------------------
 
-def dawn(player: Player, today: date) -> bool:
-    """Bring the player up to today. Returns True if a new day began for them."""
+def dawn(player: Player, today: date, spouse: str = "", spouse_played_yesterday: bool = False) -> bool:
+    """Bring the player up to today. Returns True if a new day began for them.
+
+    *spouse* is the name of the climber they are married to, if any, and
+    *spouse_played_yesterday* whether that climber was on the mountain; the
+    route supplies both, since they live in somebody else's row.
+    """
     if player.last_day is not None and player.last_day >= today:
         return False
     was_dead = not player.climber.alive
@@ -112,6 +142,11 @@ def dawn(player: Player, today: date) -> bool:
     player.notice = [text.DAWN_AFTER_DEATH if was_dead else text.DAWN]
     if mid_fight and not was_dead:
         player.notice.append(text.DAWN_MID_FIGHT)
+    brought = rules.apply_spouse_dawn(player.climber, spouse_played_yesterday)
+    if brought:
+        kind, n = brought
+        name = text.REGULAR_NAMES.get(rules.courting(player.climber) or "", spouse)
+        player.notice.append((text.SPOUSE_GIFT if kind == "gift" else text.SPOUSE_FIGHTS).format(name=name, n=n))
     return True
 
 
@@ -129,7 +164,109 @@ _SKILL_LABELS = {
 }
 
 
-def screen(player: Player, camp: list[Target] | None = None) -> Screen:
+def _suitor(player: Player, people: list[Person] | None) -> Person | None:
+    return next((p for p in people or [] if str(p.user_id) == player.event), None)
+
+
+def _corner(c: rules.Climber) -> Screen:
+    lines = list(text.CORNER)
+    choices = []
+    current = rules.courting(c)
+    if c.wed and current:
+        lines.append(text.COURT_WED.format(name=text.REGULAR_NAMES[current]))
+    elif current:
+        step = c.courtship + 1
+        done = text.COURT_STEPS[c.courtship - 1] if c.courtship else "a promising start"
+        lines.append(text.COURT_STATUS.format(
+            name=text.REGULAR_NAMES[current], done=done,
+            next=text.COURT_STEPS[step - 1], need=data.COURTSHIP_CHARM[step - 1]))
+    elif not c.heart:
+        lines.append(text.COURT_FRESH)
+
+    reasons = set()
+    for key, regular in (("k", "kalliste"), ("t", "theron")):
+        name = text.REGULAR_NAMES[regular]
+        reason = rules.why_not_court(c, regular)
+        if reason is None:
+            step = text.COURT_STEPS[c.courtship if current == regular else 0]
+            label = f"({key.upper()}){name[1:]}: {step}"
+            choices.append(Choice(key, label, f"court:{regular}"))
+        elif current in (None, regular):
+            reasons.add(reason)
+    step = c.courtship + 1 if current else 1
+    if "charm" in reasons:
+        lines.append(text.COURT_NEED_CHARM.format(
+            next=text.COURT_STEPS[step - 1], need=data.COURTSHIP_CHARM[step - 1], charm=c.charm))
+    if "gift" in reasons:
+        lines.append(text.COURT_NEED_GIFT.format(price=rules.gift_price(c)))
+    if "today" in reasons and c.alive:
+        lines.append(text.COURT_TOMORROW)
+    if "taken" in reasons:
+        lines.append(text.COURT_TAKEN)
+
+    if current:
+        choices.append(Choice("l", f"(L)eave {text.REGULAR_NAMES[current]}", "part"))
+    choices.append(Choice("h", "Other climbers' (h)earts", f"go:{HEARTS}"))
+    choices.append(Choice("b", "(B)ack to the bar", f"go:{LETHE}"))
+    return Screen("The corner table", lines, choices)
+
+
+def _hearts(c: rules.Climber, people: list[Person]) -> Screen:
+    lines = list(text.HEARTS)
+    lines.append(text.HEART_OPEN if c.open_heart else text.HEART_CLOSED)
+    choices = []
+    if not people and c.open_heart:
+        lines.append(text.NOBODY_OPEN)
+    for number, person in enumerate(people, start=1):
+        note = (
+            "spouse" if person.spouse else
+            "proposed_to_you" if person.proposal == "from_them" else
+            "you_proposed" if person.proposal == "from_me" else
+            "flirted" if person.flirted_with_me else ""
+        )
+        lines.append(f"({number}) " + text.PERSON.format(name=person.name, title=person.title, band=person.band)
+                     + text.PERSON_NOTE.get(note, ""))
+        choices.append(Choice(str(number), f"({number}) {person.name}", f"suitor:{person.user_id}"))
+    if c.open_heart:
+        choices.append(Choice("c", "(C)lose your heart to other climbers", "heart:close"))
+    else:
+        choices.append(Choice("o", "(O)pen your heart to other climbers", "heart:open"))
+    choices.append(Choice("b", "(B)ack to the corner table", f"go:{CORNER}"))
+    return Screen("Hearts", lines, choices)
+
+
+def _suitor_screen(c: rules.Climber, person: Person) -> Screen:
+    lines = [text.PERSON.format(name=person.name, title=person.title, band=person.band)]
+    choices = []
+    if person.spouse:
+        lines.append(text.PERSON_NOTE["spouse"].strip())
+        choices.append(Choice("e", "(E)nd the marriage", "divorce"))
+    else:
+        lines.append(text.SUITOR_AFFINITY.format(
+            name=person.name, affinity=person.affinity, needed=data.AFFINITY_TO_PROPOSE))
+        if person.proposal == "from_them":
+            lines.append(text.PERSON_NOTE["proposed_to_you"].strip())
+            if not c.wed and person.free:
+                choices.append(Choice("y", "Say (y)es", "accept"))
+            choices.append(Choice("n", "Say (n)o", "decline"))
+        elif person.proposal == "from_me":
+            lines.append(text.PERSON_NOTE["you_proposed"].strip())
+        elif person.flirted_with_me:
+            lines.append(text.PERSON_NOTE["flirted"].strip())
+        if not person.door_shut and rules.why_not_flirt(c, person.open_heart) is None:
+            choices.append(Choice("f", "(F)lirt", "flirt"))
+        if not person.proposal and not person.door_shut and person.open_heart \
+                and rules.can_propose(c, person.affinity, person.free):
+            choices.append(Choice("p", "(P)ropose", "propose"))
+        if person.door_shut:
+            choices.append(Choice("o", "(O)pen the door to them again", "door:open"))
+        else:
+            choices.append(Choice("c", "(C)lose the door on them, silently", "door:shut"))
+    choices.append(Choice("b", "(B)ack", f"go:{HEARTS}"))
+    return Screen(person.name, lines, choices)
+
+
+def screen(player: Player, camp: list[Target] | None = None, people: list[Person] | None = None) -> Screen:
     c = player.climber
     if not c.alive:
         return Screen("Dead until dawn", list(text.DEAD))
@@ -183,6 +320,15 @@ def screen(player: Player, camp: list[Target] | None = None) -> Screen:
         choices.append(Choice("b", "(B)ack to the Slopes", f"go:{SLOPES}"))
         return Screen("The Shepherds' Fire", lines, choices)
 
+    if player.scene == CORNER:
+        return _corner(c)
+
+    if player.scene == SUITOR and _suitor(player, people) is not None:
+        return _suitor_screen(c, _suitor(player, people))
+
+    if player.scene in (HEARTS, SUITOR):        # a suitor who has gone falls back to the list
+        return _hearts(c, people or [])
+
     if player.scene == CAMP:
         lines = list(text.CAMP)
         choices = []
@@ -235,6 +381,7 @@ def screen(player: Player, camp: list[Target] | None = None) -> Screen:
                 choices.append(Choice("r", "Take a (R)oom for the night", "room"))
         if c.purse >= rules.wine_price(c):
             choices.append(Choice("c", f"A (C)up of wine ({rules.wine_price(c)} dr)", "wine"))
+        choices.append(Choice("t", "Join the corner (t)able", f"go:{CORNER}"))
         if not c.key:
             lines.append(text.KEY_OFFER.format(price=rules.key_price(c)))
             if c.purse >= rules.key_price(c):
@@ -467,9 +614,9 @@ def _event_outcome(rng: Random, player: Player, result: rules.EventResult) -> No
 
 
 def act(rng: Random, player: Player, action: str, amount: int = 0, words: str = "",
-        camp: list[Target] | None = None) -> None:
+        camp: list[Target] | None = None, people: list[Person] | None = None) -> None:
     """Perform one action from the player's current screen, or raise NotOffered."""
-    offered = {choice.action: choice for choice in screen(player, camp).choices}
+    offered = {choice.action: choice for choice in screen(player, camp, people).choices}
     if action not in offered:
         raise NotOffered(action)
     c = player.climber
@@ -478,6 +625,61 @@ def act(rng: Random, player: Player, action: str, amount: int = 0, words: str = 
 
     if action.startswith("go:"):
         player.scene = action.removeprefix("go:")
+        if player.scene != SUITOR:
+            player.event = None
+
+    elif action.startswith("court:"):
+        regular = action.removeprefix("court:")
+        name = text.REGULAR_NAMES[regular]
+        result = rules.apply_courtship(rng, c, regular)
+        if not result.won:
+            player.notice.append(text.COURT_LOST[result.step - 1].format(name=name))
+        else:
+            player.notice += [text.COURT_WON[regular][result.step - 1], text.COURT_XP.format(xp=result.xp)]
+            if result.charmed:
+                player.notice.append(text.COURT_CHARMED)
+            if result.married:
+                player.notice.append(text.WEDDING_REGULAR.format(name=name))
+                player.happenings.append((WED_REGULAR, name))
+
+    elif action == "part":
+        name = text.REGULAR_NAMES[rules.courting(c)]
+        rules.apply_parting(c)
+        player.notice.append(text.PARTED.format(name=name))
+
+    elif action in ("heart:open", "heart:close"):
+        c.open_heart = action == "heart:open"
+        player.notice.append(text.HEART_OPENED if c.open_heart else text.HEART_SHUT)
+
+    elif action.startswith("suitor:"):
+        player.event, player.scene = action.removeprefix("suitor:"), SUITOR
+
+    elif action in ("flirt", "propose", "accept", "decline", "divorce", "door:shut", "door:open"):
+        person = _suitor(player, people)
+        who = {"id": person.user_id, "name": person.name}
+        if action == "flirt":
+            c.flirted_today = True
+            player.notice.append(text.FLIRTED.format(name=person.name))
+            player.happenings.append((FLIRT, who))
+        elif action == "propose":
+            player.notice.append(text.PROPOSED.format(name=person.name))
+            player.happenings.append((PROPOSE, who))
+        elif action == "accept":
+            rules.apply_wedding(c, person.user_id)
+            player.notice.append(text.ACCEPTED.format(name=person.name))
+            player.happenings.append((ACCEPT, who))
+        elif action == "decline":
+            player.notice.append(text.DECLINED.format(name=person.name))
+            player.happenings.append((DECLINE, who))
+        elif action == "divorce":
+            rules.apply_parting(c)
+            player.notice.append(text.DIVORCED.format(name=person.name))
+            player.happenings.append((DIVORCE, who))
+            player.scene, player.event = HEARTS, None
+        else:
+            shut = action == "door:shut"
+            player.notice.append((text.DOOR_SHUT if shut else text.DOOR_OPENED).format(name=person.name))
+            player.happenings.append((SHUT_DOOR if shut else OPEN_DOOR, who))
 
     elif action == "seek":
         c.fights_left -= 1

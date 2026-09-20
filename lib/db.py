@@ -158,6 +158,24 @@ CREATE TABLE IF NOT EXISTS climb_robberies (
     UNIQUE(day, attacker_id, victim_id)
 );
 
+-- Courtship between climbers. One row per pair (low_id < high_id): how far it
+-- has got, when each last flirted, and who, if anyone, has proposed. A door is
+-- one climber silently refusing another's attention.
+CREATE TABLE IF NOT EXISTS climb_hearts (
+    low_id INTEGER NOT NULL REFERENCES users(id),
+    high_id INTEGER NOT NULL REFERENCES users(id),
+    affinity INTEGER NOT NULL DEFAULT 0,
+    low_last TEXT,
+    high_last TEXT,
+    proposal_from INTEGER,
+    PRIMARY KEY (low_id, high_id)
+);
+CREATE TABLE IF NOT EXISTS climb_doors (
+    owner_id INTEGER NOT NULL REFERENCES users(id),
+    shut_to_id INTEGER NOT NULL REFERENCES users(id),
+    PRIMARY KEY (owner_id, shut_to_id)
+);
+
 -- Indexes for the lookups the app makes on every page: thread and board
 -- listings, like counts, channel history, and session expiry sweeps.
 CREATE INDEX IF NOT EXISTS idx_posts_thread ON posts(thread_id);

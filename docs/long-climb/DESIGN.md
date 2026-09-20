@@ -378,8 +378,14 @@ other players; the default is *no*. NPC courtship (§9.3) is unaffected.
   back, ignore it, or **close the door** — which silently blocks further flirts
   from that player. There is no free-text in a flirt; messages go through the
   BBS's own DMs, where the usual rules and moderation already apply.
-- Mutual flirts on different days build *affinity*. At enough affinity and
-  Charm, either may propose; the other must accept.
+- Flirts build *affinity* only when they are returned: yours counts only if
+  they have flirted back since your last one. One-sided attention never adds
+  up to anything. At affinity 5 and Charm 5, either may propose; the other
+  must accept.
+- **Closing the door is a shadow-block.** The person shut out sees exactly
+  what they saw before, their daily flirt is spent as usual, and nothing
+  arrives: no note, no affinity, no proposal. Closing the door also withdraws
+  any proposal they had made.
 - **Married climbers** cannot attack each other, each gets a small dawn bonus
   when the other played yesterday, and either may end it (a Charm penalty, a
   Herald notice, no drama mechanics).
@@ -572,7 +578,7 @@ are the argument for having one:
 | 4 ✅ | Ladon, ascent and reset, titles, the Stele, `game_scores` | **Done 2026-09-20.** The whole loop closes: a test bot that sees only the screens climbs, kills Ladon, wakes in the Foothills with its calling rank and an ascent to its name, and starts again (`tests/test_climb_summit.py`). **Steps 1–4 are a complete single-player game.** |
 | 5 ✅ | The Lethe House: Orpheus, the wall, rooms, Nikandros; the Herald; events | **Done 2026-09-20.** Orpheus' eight songs, the wall (the only player-written text: escaped, no links, five lines a day, sysop can remove), rooms, wine and gossip; the Herald's three days of news; thirteen Slopes events including the man with the boulder; the hidden Shepherds' Fire (knucklebones, change of calling); and both sysop tools. Deferred to step 6, where they have a use: Nikandros' key, and "ask about someone" at the Fire. |
 | 6 ✅ | The Camp and robbery; the key | **Done 2026-09-20.** Two-player tests (`tests/test_climb_camp.py`), including the coin-duplication exploit a snapshot purse would have allowed. Also: a mailbox so the victim's note survives dawn, where people sleep on the Stele, and "ask about the others" at the Fire. |
-| 7 | Courtship: the regulars, then other climbers with opt-in and closed doors | Consent rules are tests, not comments. |
+| 7 ✅ | Courtship: the regulars, then other climbers with opt-in and closed doors | **Done 2026-09-20.** Consent rules are tests (`tests/test_climb_hearts.py`): hearts start closed; flirting needs *both* hearts open; a flirt carries no words even if a form sends some; affinity grows only when attention is returned; a closed door is silent to the person shut out; a proposal needs the other to accept, and cannot be accepted for someone no longer free. |
 | 8 | All prose in `text.py`; read-through for tone; hotkeys; phone layout; headless-browser pass under the CSP | It is fun to read. |
 
 Steps 1–4 are a complete single-player game. Each later step is independently

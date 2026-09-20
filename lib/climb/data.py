@@ -204,6 +204,24 @@ IDLE_DAYS = 14
 KEY_PRICE_IN_KILLS = 20.0
 CAMP_LIST_LENGTH = 9
 
+# --- courtship -------------------------------------------------------------------
+REGULARS = ("kalliste", "theron")
+# Charm needed for each of the eight steps with a regular.
+COURTSHIP_CHARM = (1, 2, 4, 7, 10, 14, 19, 25)
+GIFT_STEP = 5                       # "bring a gift" costs drachmae
+GIFT_PRICE_IN_KILLS = 3.0
+COURT_BASE_CHANCE, COURT_CHARM_STEP = 0.50, 0.05
+COURT_MIN_CHANCE, COURT_MAX_CHANCE = 0.30, 0.95
+COURT_XP_KILLS = 2
+COURT_CHARM_CHANCE = 0.25           # a success sometimes leaves you more charming
+SPOUSE_GIFT_KILLS = 1.0             # what a regular you married leaves by the bed each dawn
+PARTING_CHARM_LOSS = 2
+# Between climbers.
+AFFINITY_TO_PROPOSE = 5
+CHARM_TO_PROPOSE = 5
+SPOUSE_EXTRA_FIGHTS = 2             # at dawn, when your spouse played yesterday
+HEARTS_LIST_LENGTH = 9
+
 # --- the Lethe House ----------------------------------------------------------
 # Orpheus' songs and how often he picks each. The shares sum to 1.
 SONGS = (

@@ -143,7 +143,7 @@ async def test_orpheus_sings_once_a_day(alice, dice, fixed_day):
     async with await client_for(alice["id"]) as client:
         await begin(client)
         await act(client, "go:lethe")
-        assert offered((await client.get(PAGE)).text) == ["song", "go:wall", "room", "wine", "go:agora"]
+        assert offered((await client.get(PAGE)).text) == ["song", "go:wall", "room", "wine", "go:corner", "go:agora"]
 
         dice(chance=[PICK["road"]])
         await act(client, "song")
@@ -179,7 +179,7 @@ async def test_a_room_and_a_cup_of_wine(alice, dice):
         assert c.room and c.purse == 60 - 11 - 44
         html = unescape((await client.get(PAGE)).text)
         assert "wooden fish" in html and text.LETHE_ROOMED in html
-        assert offered(html) == ["song", "go:wall", "go:agora"]           # no second room; too poor for wine
+        assert offered(html) == ["song", "go:wall", "go:corner", "go:agora"]   # no second room; too poor for wine
 
 
 # ---------------------------------------------------------------------------

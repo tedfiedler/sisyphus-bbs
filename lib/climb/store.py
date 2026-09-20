@@ -223,6 +223,102 @@ async def change(user_id: int, mutate) -> object:
 
 
 # ---------------------------------------------------------------------------
+# Hearts
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Bond:
+    """What there is between two climbers, from one of their points of view."""
+
+    affinity: int = 0
+    my_last: str | None = None
+    their_last: str | None = None
+    proposal_from: int | None = None
+
+
+def _pair(a: int, b: int) -> tuple[int, int]:
+    return (a, b) if a < b else (b, a)
+
+
+async def bonds(user_id: int) -> dict[int, Bond]:
+    """Every bond this climber has, keyed by the other's user id."""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT * FROM climb_hearts WHERE low_id = ? OR high_id = ?", (user_id, user_id)
+    )
+    found = {}
+    for row in await cursor.fetchall():
+        mine_is_low = row["low_id"] == user_id
+        found[row["high_id"] if mine_is_low else row["low_id"]] = Bond(
+            affinity=row["affinity"],
+            my_last=row["low_last"] if mine_is_low else row["high_last"],
+            their_last=row["high_last"] if mine_is_low else row["low_last"],
+            proposal_from=row["proposal_from"],
+        )
+    return found
+
+
+async def note_flirt(from_id: int, to_id: int, day: date, counts: bool) -> None:
+    low, high = _pair(from_id, to_id)
+    side = "low_last" if from_id == low else "high_last"
+    db = await get_db()
+    await db.execute("INSERT OR IGNORE INTO climb_hearts (low_id, high_id) VALUES (?, ?)", (low, high))
+    await db.execute(
+        f"UPDATE climb_hearts SET {side} = ?, affinity = affinity + ? WHERE low_id = ? AND high_id = ?",
+        (day.isoformat(), int(counts), low, high),
+    )
+    await db.commit()
+
+
+async def set_proposal(a: int, b: int, from_id: int | None) -> None:
+    low, high = _pair(a, b)
+    db = await get_db()
+    await db.execute("INSERT OR IGNORE INTO climb_hearts (low_id, high_id) VALUES (?, ?)", (low, high))
+    await db.execute(
+        "UPDATE climb_hearts SET proposal_from = ? WHERE low_id = ? AND high_id = ?", (from_id, low, high)
+    )
+    await db.commit()
+
+
+async def forget_bond(a: int, b: int) -> None:
+    low, high = _pair(a, b)
+    db = await get_db()
+    await db.execute("DELETE FROM climb_hearts WHERE low_id = ? AND high_id = ?", (low, high))
+    await db.commit()
+
+
+async def doors_shut_by(owner_id: int) -> set[int]:
+    db = await get_db()
+    cursor = await db.execute("SELECT shut_to_id FROM climb_doors WHERE owner_id = ?", (owner_id,))
+    return {row["shut_to_id"] for row in await cursor.fetchall()}
+
+
+async def is_door_shut(owner_id: int, to_id: int) -> bool:
+    return to_id in await doors_shut_by(owner_id)
+
+
+async def set_door(owner_id: int, to_id: int, shut: bool) -> None:
+    db = await get_db()
+    if shut:
+        await db.execute("INSERT OR IGNORE INTO climb_doors (owner_id, shut_to_id) VALUES (?, ?)", (owner_id, to_id))
+    else:
+        await db.execute("DELETE FROM climb_doors WHERE owner_id = ? AND shut_to_id = ?", (owner_id, to_id))
+    await db.commit()
+
+
+async def everyone_else(user_id: int) -> list[tuple[int, str, Player]]:
+    """(user id, username, player) for every other climber seen in the last fortnight."""
+    db = await get_db()
+    cursor = await db.execute(
+        f"""SELECT p.*, u.username FROM climb_players p JOIN users u ON u.id = p.user_id
+            WHERE p.user_id != ? AND p.last_seen >= datetime('now', '-{IDLE_DAYS} days')
+            ORDER BY u.username COLLATE NOCASE""",
+        (user_id,),
+    )
+    return [(row["user_id"], row["username"], _from_row(row)) for row in await cursor.fetchall()]
+
+
+# ---------------------------------------------------------------------------
 # The Herald
 # ---------------------------------------------------------------------------
 

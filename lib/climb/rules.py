@@ -50,6 +50,17 @@ class Climber:
     wall_today: int = 0
     knucklebones_today: int = 0
     key: bool = False               # Nikandros' key: one room-sleeper may be robbed tonight
+    courted_today: bool = False
+    flirted_today: bool = False
+    # The heart. All of it survives an ascent. `heart` is "" (free),
+    # "npc:kalliste" / "npc:theron", or "player:<user id>"; `courtship` is how
+    # many of the eight steps are done with a regular; `wed` means married to
+    # whoever `heart` names. `open_heart` is the opt-in: only then can other
+    # climbers flirt with you, or you with them. It starts closed.
+    heart: str = ""
+    courtship: int = 0
+    wed: bool = False
+    open_heart: bool = False
     # Known for good, through every ascent: the way to the Shepherds' Fire.
     fire_known: bool = False
 
@@ -405,6 +416,7 @@ def apply_dawn(c: Climber) -> None:
     c.skill_left = skill_uses_per_day(c)
     c.gate_tried_today = False
     c.sung_today = c.mercy = c.room = c.key = False
+    c.courted_today = c.flirted_today = False
     c.hp_boost = c.wall_today = c.knucklebones_today = 0
     c.hp = max_hp(c)
 
@@ -554,6 +566,136 @@ def resolve_event(rng: Random, c: Climber, kind: str, option: str = "", amount: 
 
 
 # ---------------------------------------------------------------------------
+# Courtship
+# ---------------------------------------------------------------------------
+
+def courting(c: Climber) -> str | None:
+    """The regular this climber is courting or married to, if any."""
+    return c.heart.removeprefix("npc:") if c.heart.startswith("npc:") else None
+
+
+def spouse_id(c: Climber) -> int | None:
+    """The user id of the climber this one is married to, if any."""
+    return int(c.heart.removeprefix("player:")) if c.wed and c.heart.startswith("player:") else None
+
+
+def court_chance(c: Climber, step: int) -> float:
+    surplus = c.charm - data.COURTSHIP_CHARM[step - 1]
+    chance = data.COURT_BASE_CHANCE + data.COURT_CHARM_STEP * surplus
+    return max(data.COURT_MIN_CHANCE, min(data.COURT_MAX_CHANCE, chance))
+
+
+def gift_price(c: Climber) -> int:
+    return _kills_worth(c, data.GIFT_PRICE_IN_KILLS)
+
+
+def why_not_court(c: Climber, regular: str) -> str | None:
+    """None if the climber may try the next step with this regular today."""
+    if regular not in data.REGULARS:
+        raise ValueError(f"nobody here by that name: {regular!r}")
+    if not c.alive or c.courted_today:
+        return "today"
+    if c.heart.startswith("player:"):
+        return "taken"
+    if c.wed:
+        return "wed"
+    if courting(c) not in (None, regular):
+        return "other"                      # leave one before courting the other
+    step = c.courtship + 1
+    if c.charm < data.COURTSHIP_CHARM[step - 1]:
+        return "charm"
+    if step == data.GIFT_STEP and c.purse < gift_price(c):
+        return "gift"
+    return None
+
+
+@dataclass
+class Courting:
+    step: int
+    won: bool
+    xp: int = 0
+    charmed: bool = False
+    married: bool = False
+
+
+def apply_courtship(rng: Random, c: Climber, regular: str) -> Courting:
+    """Try the next step with a regular. One attempt a day, win or lose."""
+    if why_not_court(c, regular) is not None:
+        raise ValueError("not today")
+    step = c.courtship + 1
+    c.courted_today = True
+    c.heart = f"npc:{regular}"
+    if step == data.GIFT_STEP:
+        c.purse -= gift_price(c)            # the gift is given either way
+    if rng.random() >= court_chance(c, step):
+        return Courting(step, won=False)
+    c.courtship = step
+    xp = data.REF_XP[c.level - 1] * data.COURT_XP_KILLS
+    c.xp += xp
+    charmed = rng.random() < data.COURT_CHARM_CHANCE
+    c.charm += charmed
+    c.wed = step == len(data.COURTSHIP_CHARM)
+    return Courting(step, won=True, xp=xp, charmed=charmed, married=c.wed)
+
+
+def apply_parting(c: Climber) -> None:
+    """End whatever this climber's heart is tied to. It costs a little Charm."""
+    if not c.heart:
+        raise ValueError("nothing to end")
+    c.heart, c.courtship, c.wed = "", 0, False
+    c.charm = max(0, c.charm - data.PARTING_CHARM_LOSS)
+
+
+def flirt_counts(my_last: str | None, their_last: str | None) -> bool:
+    """Does a flirt today raise affinity? Only if they have answered since my last.
+
+    Days are ISO strings. One-sided attention never builds anything: the other
+    person has to have flirted back, and again after each of mine.
+    """
+    return their_last is not None and (my_last is None or their_last >= my_last)
+
+
+def why_not_flirt(me: Climber, them_open: bool) -> str | None:
+    if not me.alive or me.flirted_today:
+        return "today"
+    if not me.open_heart:
+        return "closed"                     # you must be open to it yourself
+    if not them_open:
+        return "their_door"
+    if me.wed:
+        return "wed"
+    return None
+
+
+def can_propose(me: Climber, affinity: int, their_heart_free: bool) -> bool:
+    return (
+        me.alive and me.open_heart and not me.wed and their_heart_free
+        and affinity >= data.AFFINITY_TO_PROPOSE and me.charm >= data.CHARM_TO_PROPOSE
+    )
+
+
+def apply_wedding(c: Climber, spouse_user_id: int) -> None:
+    """Marry another climber. Any half-finished courtship of a regular is dropped."""
+    if c.wed:
+        raise ValueError("already married")
+    c.heart, c.courtship, c.wed = f"player:{spouse_user_id}", 0, True
+
+
+def apply_spouse_dawn(c: Climber, spouse_played_yesterday: bool = False) -> tuple[str, int] | None:
+    """What marriage brings at dawn: (kind, amount), or None."""
+    if not c.wed:
+        return None
+    if courting(c):
+        gift = _kills_worth(c, data.SPOUSE_GIFT_KILLS)
+        c.purse += gift
+        return "gift", gift
+    if spouse_played_yesterday:
+        c.fights_left += data.SPOUSE_EXTRA_FIGHTS
+        return "fights", data.SPOUSE_EXTRA_FIGHTS
+    return None
+
+
+# ---------------------------------------------------------------------------
 # The Camp: robbing the sleeping
 # ---------------------------------------------------------------------------
 
@@ -581,12 +723,14 @@ def as_they_sleep(target: Climber, days_since_played: int) -> Climber:
 
 def why_not_rob(
     attacker: Climber, target: Climber, *, days_since_played: int, minutes_since_seen: float,
-    days_since_joined: float, already_today: bool,
+    days_since_joined: float, already_today: bool, married: bool = False,
 ) -> str | None:
     """None if *attacker* may rob *target* now, else a short reason."""
     sleeper = as_they_sleep(target, days_since_played)
     if not attacker.alive or attacker.duels_left < 1:
         return "spent"
+    if married:
+        return "spouse"
     if not sleeper.alive:
         return "dead"
     if minutes_since_seen < data.AWAKE_MINUTES:

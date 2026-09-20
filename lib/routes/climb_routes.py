@@ -7,11 +7,12 @@ action from that screen. All game logic is in ``lib.climb``.
 """
 
 import secrets
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from lib import auth
 from lib.climb import clock, data, rules, scenes, store, text
 from lib.deps import require_admin, require_user
 from lib.templating import templates, _add_globals
@@ -26,6 +27,21 @@ rng = secrets.SystemRandom()
 
 def _back() -> RedirectResponse:
     return RedirectResponse(PAGE, status_code=303)
+
+
+async def _dawn(player: store.Player, today) -> bool:
+    """Apply dawn if it is due, telling it about a spouse who lives in another row."""
+    if player.last_day is not None and player.last_day >= today:
+        return False
+    name, played = "", False
+    spouse_id = rules.spouse_id(player.climber)
+    if spouse_id is not None:
+        spouse = await store.load(spouse_id)
+        user = await auth.get_user(spouse_id)
+        if spouse is not None and user is not None:
+            name = user["username"]
+            played = spouse.last_day >= today - timedelta(days=1)
+    return scenes.dawn(player, today, spouse=name, spouse_played_yesterday=played)
 
 
 def _day_label(day, today) -> str:
@@ -43,9 +59,108 @@ def _news_line(kind: str, username: str, detail: str, player: store.Player) -> s
     )
 
 
+HEART_SCENES = (scenes.HEARTS, scenes.SUITOR)
+
+
+async def _people(player: store.Player) -> list[scenes.Person]:
+    """Who the hearts screens show this player.
+
+    With a closed heart: only a spouse, or someone with a proposal pending
+    either way. With an open one: also everyone else whose heart is open, and
+    anyone who has flirted with you (so that you can close the door on them).
+    """
+    me = player.climber
+    my_spouse = rules.spouse_id(me)
+    bonds = await store.bonds(player.user_id)
+    shut = await store.doors_shut_by(player.user_id)
+    people = []
+    for user_id, name, them in await store.everyone_else(player.user_id):
+        bond = bonds.get(user_id, store.Bond())
+        proposal = (
+            "" if bond.proposal_from is None else
+            "from_me" if bond.proposal_from == player.user_id else "from_them"
+        )
+        spouse = user_id == my_spouse
+        flirted = bond.their_last is not None and user_id not in shut
+        visible = spouse or bool(proposal) or (
+            me.open_heart and (them.climber.open_heart or flirted or user_id in shut)
+        )
+        if not visible:
+            continue
+        people.append(scenes.Person(
+            user_id=user_id, name=name, title=rules.title(them.climber.ascents),
+            band=data.BANDS[them.climber.level - 1], open_heart=them.climber.open_heart,
+            free=not them.climber.wed, affinity=bond.affinity, flirted_with_me=flirted,
+            proposal=proposal, spouse=spouse, door_shut=user_id in shut,
+        ))
+    people.sort(key=lambda p: (not p.spouse, not p.proposal, -p.affinity, p.name.lower()))
+    return people[:data.HEARTS_LIST_LENGTH]
+
+
+async def _settle_heart(user: dict, player: store.Player, kind: str, who: dict, today) -> bool:
+    """Carry a heart action over to the other climber. Returns True if it is news."""
+    me, them, name = user["id"], who["id"], user["username"]
+
+    if kind == scenes.SHUT_DOOR:
+        await store.set_door(me, them, True)
+        await store.set_proposal(me, them, None)             # and whatever they asked is unasked
+        return False
+    if kind == scenes.OPEN_DOOR:
+        await store.set_door(me, them, False)
+        return False
+
+    # A closed door is silent: the sender sees exactly what they would have
+    # seen, their flirt for the day is spent, and nothing arrives.
+    if kind in (scenes.FLIRT, scenes.PROPOSE) and await store.is_door_shut(them, me):
+        return False
+
+    if kind == scenes.FLIRT:
+        bond = (await store.bonds(me)).get(them, store.Bond())
+        await store.note_flirt(me, them, today, rules.flirt_counts(bond.my_last, bond.their_last))
+        await store.change(them, lambda p: p.mail.append(text.MAIL_FLIRT.format(name=name)))
+        return False
+    if kind == scenes.PROPOSE:
+        await store.set_proposal(me, them, me)
+        await store.change(them, lambda p: p.mail.append(text.MAIL_PROPOSAL.format(name=name)))
+        return False
+    if kind == scenes.DECLINE:
+        await store.set_proposal(me, them, None)
+        await store.change(them, lambda p: p.mail.append(text.MAIL_DECLINED.format(name=name)))
+        return False
+    if kind == scenes.ACCEPT:
+        def wed(other: store.Player) -> bool:
+            if other.climber.wed:
+                return False
+            rules.apply_wedding(other.climber, me)
+            other.mail.append(text.MAIL_ACCEPTED.format(name=name))
+            return True
+
+        married = await store.change(them, wed)
+        await store.set_proposal(me, them, None)
+        if not married:
+            # They married someone else in the moment between the screen and the yes.
+            def undo(mine: store.Player):
+                mine.climber.heart, mine.climber.wed = "", False
+                mine.notice = [text.MARRY_TOO_LATE.format(name=who["name"])]
+
+            await store.change(me, undo)
+        return bool(married)
+
+    # divorce
+    def part(other: store.Player):
+        if rules.spouse_id(other.climber) == me:
+            other.climber.heart, other.climber.wed = "", False
+            other.mail.append(text.MAIL_DIVORCED.format(name=name))
+
+    await store.change(them, part)
+    await store.forget_bond(me, them)
+    return True
+
+
 async def _camp(player: store.Player, today) -> list[scenes.Target]:
     """The sleepers this player could rob right now, strongest first."""
     targets = []
+    spouse = rules.spouse_id(player.climber)
     for sleeper in await store.sleepers(player.user_id, today):
         them = sleeper.player
         away = (today - them.last_day).days
@@ -53,6 +168,7 @@ async def _camp(player: store.Player, today) -> list[scenes.Target]:
             player.climber, them.climber, days_since_played=away,
             minutes_since_seen=sleeper.minutes_since_seen,
             days_since_joined=sleeper.days_since_joined, already_today=sleeper.already_today,
+            married=sleeper.user_id == spouse,
         )
         if reason is None:
             targets.append(scenes.Target(
@@ -110,6 +226,11 @@ async def _tell_the_town(user: dict, player: store.Player, today) -> None:
         if kind in (scenes.ROBBED, scenes.FELL_TO):
             await _settle_robbery(user, player, kind, detail)
             detail = detail["name"]
+        if kind in (scenes.FLIRT, scenes.PROPOSE, scenes.ACCEPT, scenes.DECLINE, scenes.DIVORCE,
+                    scenes.SHUT_DOOR, scenes.OPEN_DOOR):
+            if not await _settle_heart(user, player, kind, detail, today):
+                continue
+            detail = detail["name"]
         if kind in (scenes.LEVEL_GAINED, scenes.ASCENDED):
             await store.record_score(
                 user["id"], rules.renown(player.climber), detail, won=kind == scenes.ASCENDED,
@@ -122,7 +243,7 @@ async def climb_page(request: Request, user: dict = Depends(require_user)):
     """Render whatever screen the player is on."""
     player = await store.load(user["id"])
     if player is not None:
-        changed = scenes.dawn(player, clock.today())
+        changed = await _dawn(player, clock.today())
         if player.mail:
             # What happened while they were away, shown once, above the day's first words.
             player.notice, player.mail, changed = player.mail + player.notice, [], True
@@ -135,8 +256,9 @@ async def climb_page(request: Request, user: dict = Depends(require_user)):
     else:
         today = clock.today()
         camp = await _camp(player, today) if player.scene == scenes.CAMP and player.climber.alive else None
+        people = await _people(player) if player.scene in HEART_SCENES and player.climber.alive else None
         context = {
-            "screen": scenes.screen(player, camp), "status": scenes.status(player),
+            "screen": scenes.screen(player, camp, people), "status": scenes.status(player),
             "notice": player.notice, "turn": player.turn,
         }
         if player.scene in (scenes.STELE, scenes.OTHERS) and player.climber.alive:
@@ -194,13 +316,14 @@ async def climb_act(
     if turn != player.turn:
         return _back()
     # A form from before midnight: the day has turned, so yesterday's choice is void.
-    if scenes.dawn(player, today):
+    if await _dawn(player, today):
         await store.save(player)
         return _back()
 
     camp = await _camp(player, today) if player.scene == scenes.CAMP else None
+    people = await _people(player) if player.scene in HEART_SCENES else None
     try:
-        scenes.act(rng, player, action, amount, words, camp)
+        scenes.act(rng, player, action, amount, words, camp, people)
     except scenes.NotOffered:
         return _back()
     if await store.save(player):

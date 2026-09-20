@@ -399,3 +399,8 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
 .climb-sheet { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--border); }
 .climb-stele { margin-top: 10px; font-size: 13px; }
 .climb-stele tr.c-sky td { color: var(--accent); }
+.climb-words { width: 34ch; max-width: 100%; margin-bottom: 0; }
+.climb-news { margin-top: 10px; }
+.climb-news h3 { color: var(--accent); font-size: 12px; text-transform: uppercase; margin-bottom: 4px; }
+.climb-news p, .climb-wall p { margin-bottom: 4px; max-width: 75ch; }
+.climb-wall { margin-top: 10px; border-left: 3px solid var(--border); padding-left: 10px; }

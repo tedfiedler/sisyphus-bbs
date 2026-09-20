@@ -16,15 +16,20 @@ from datetime import date
 from random import Random
 
 from lib.climb import data, rules, text
+from lib.content_filter import contains_url
 from lib.climb.rules import Outcome
 from lib.climb.store import AGORA, Player
 
 SLOPES, FIGHT, DEAD, HYGIEIA, VAULT = "slopes", "fight", "dead", "hygieia", "vault"
 FORGE, AEGIS, PALAESTRA, ORCHARD = "forge", "aegis", "palaestra", "orchard"
 SUMMIT, STELE = "summit", "stele"
+LETHE, WALL, HERALD = "lethe", "wall", "herald"
+EVENT, FIRE = "event", "fire"
 
-# What a player's `happenings` may contain, for the route to act on.
-LEVEL_GAINED, ASCENDED = "level", "ascent"
+# What a player's `happenings` may contain, for the route to act on: each is
+# (kind, detail). The first four are news; WROTE carries a line for the wall.
+ARRIVED, LEVEL_GAINED, DIED, ASCENDED, WROTE = "arrival", "level", "death", "ascent", "wall"
+KID_HOME = "kid"
 
 
 class NotOffered(Exception):
@@ -38,6 +43,7 @@ class Choice:
     action: str
     amount: bool = False        # takes a number
     most: int = 0               # the largest sensible number, for the input's max
+    words: bool = False         # takes a line of text
 
 
 @dataclass
@@ -83,6 +89,7 @@ def dawn(player: Player, today: date) -> bool:
     mid_fight = player.fight is not None
     rules.apply_dawn(player.climber)
     player.fight = None
+    player.event = None
     player.scene = AGORA
     player.last_day = today
     player.notice = [text.DAWN_AFTER_DEATH if was_dead else text.DAWN]
@@ -94,6 +101,10 @@ def dawn(player: Player, today: date) -> bool:
 # ---------------------------------------------------------------------------
 # Describing the current scene
 # ---------------------------------------------------------------------------
+
+_CALLING_CHOICES = {
+    data.SPEAR: ("s", "the (S)pear"), data.TORCH: ("t", "the (T)orch"), data.SANDAL: ("a", "the S(a)ndal"),
+}
 
 _SKILL_LABELS = {
     "fury": ("f", "(F)ury"), "flame": ("f", "(F)lame"), "mend": ("m", "(M)end"),
@@ -124,11 +135,70 @@ def screen(player: Player) -> Screen:
             line = f"{fight.foe.name}: {fight.foe_hp} hit points."
         return Screen(fight.foe.name, [line], choices)
 
+    if player.scene == EVENT and player.event:
+        kind = player.event
+        lines = list(text.EVENT_INTRO[kind])
+        choices = []
+        for option in rules.event_options(c, kind):
+            key, label = text.EVENT_OPTIONS[kind][option]
+            if option == "wager":
+                most = rules.satyr_max_stake(c)
+                lines.append(text.SATYR_STAKE.format(most=most))
+                choices.append(Choice(key, label, f"event:{option}", amount=True, most=most))
+            else:
+                choices.append(Choice(key, label, f"event:{option}"))
+        return Screen("On the path", lines, choices)
+
+    if player.scene == FIRE:
+        lines = list(text.FIRE)
+        choices = []
+        most = rules.knucklebones_max_stake(c)
+        if most > 0:
+            left = data.KNUCKLEBONES_PER_DAY - c.knucklebones_today
+            lines.append(text.FIRE_GAMES.format(most=most, left=left))
+            choices.append(Choice("k", "(K)nucklebones", "knucklebones", amount=True, most=most))
+        else:
+            lines.append(text.FIRE_NO_GAMES)
+        for calling, (key, label) in _CALLING_CHOICES.items():
+            if calling != c.calling:
+                choices.append(Choice(key, f"Take up {label}", f"calling:{calling}"))
+        choices.append(Choice("b", "(B)ack to the Slopes", f"go:{SLOPES}"))
+        return Screen("The Shepherds' Fire", lines, choices)
+
     if player.scene == SUMMIT:
         return Screen("The Garden", [text.SUMMIT_REST], [Choice("d", "(D)own to the Agora", f"go:{AGORA}")])
 
     if player.scene == STELE:
         return Screen("The Stele", list(text.STELE), [Choice("b", "(B)ack to the Agora", f"go:{AGORA}")])
+
+    if player.scene == HERALD:
+        return Screen("The Herald's Board", list(text.HERALD), [Choice("b", "(B)ack to the Agora", f"go:{AGORA}")])
+
+    if player.scene == WALL:
+        choices = []
+        if c.wall_today < data.WALL_LINES_PER_DAY:
+            choices.append(Choice("s", "(S)cratch a line", "wall:write", words=True))
+        choices.append(Choice("b", "(B)ack to the bar", f"go:{LETHE}"))
+        return Screen("The Wall", [text.WALL], choices)
+
+    if player.scene == LETHE:
+        lines = list(text.LETHE)
+        choices = []
+        if c.sung_today:
+            lines.append(text.ORPHEUS_DONE)
+        else:
+            choices.append(Choice("o", "Ask (O)rpheus for a song", "song"))
+        choices.append(Choice("w", "Read the (W)all", f"go:{WALL}"))
+        if c.room:
+            lines.append(text.LETHE_ROOMED)
+        else:
+            lines.append(text.ROOM_OFFER.format(price=rules.room_price(c)))
+            if c.purse >= rules.room_price(c):
+                choices.append(Choice("r", "Take a (R)oom for the night", "room"))
+        if c.purse >= rules.wine_price(c):
+            choices.append(Choice("c", f"A (C)up of wine ({rules.wine_price(c)} dr)", "wine"))
+        choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
+        return Screen("The Lethe House", lines, choices)
 
     if player.scene == SLOPES:
         band = data.BANDS[c.level - 1]
@@ -138,6 +208,8 @@ def screen(player: Player) -> Screen:
             choices.append(Choice("l", "(L)ook for trouble", "seek"))
         else:
             lines.append(text.SLOPES_SPENT)
+        if c.fire_known:
+            choices.append(Choice("f", "The Shepherds' (F)ire", f"go:{FIRE}"))
         if c.level == data.LEVELS:
             if rules.can_seek_ladon(c):
                 choices.append(Choice("s", "(S)eek the Garden", "garden"))
@@ -218,8 +290,10 @@ def screen(player: Player) -> Screen:
         Choice("a", "(A)egis Row", f"go:{AEGIS}"),
         Choice("h", "House of (H)ygieia", f"go:{HYGIEIA}"),
         Choice("v", "The Ferryman's (V)ault", f"go:{VAULT}"),
+        Choice("l", "The (L)ethe House", f"go:{LETHE}"),
         Choice("p", "The (P)alaestra", f"go:{PALAESTRA}"),
         Choice("o", "The (O)rchard Gate", f"go:{ORCHARD}"),
+        Choice("n", "(N)ews from the Herald", f"go:{HERALD}"),
         Choice("s", "The (S)tele", f"go:{STELE}"),
     ])
 
@@ -312,12 +386,29 @@ def _after_blows(rng: Random, player: Player) -> None:
     else:
         if fight.foe.kind == rules.LADON:
             player.notice.append(text.LADON_WINS)
+        player.happenings.append((DIED, fight.foe.name))
         drachmae, xp = rules.apply_death(c)
         player.notice += [line.format(drachmae=drachmae, xp=xp) for line in text.DEATH]
         player.scene = DEAD
 
 
-def act(rng: Random, player: Player, action: str, amount: int = 0) -> None:
+def _start_fight(rng: Random, player: Player, foe: rules.Foe) -> None:
+    player.fight = rules.open_fight(rng, player.climber, foe)
+    player.scene = FIGHT
+    player.notice.append(text.FIGHT_OPENS.format(foe=foe.name))
+    player.notice += _narrate(player.fight)
+    _after_blows(rng, player)
+
+
+def _event_outcome(rng: Random, player: Player, result: rules.EventResult) -> None:
+    player.notice.append(text.EVENT_RESULT[result.key].format(n=result.n))
+    if result.news:
+        player.happenings.append((KID_HOME, ""))
+    if result.foe is not None:
+        _start_fight(rng, player, result.foe)
+
+
+def act(rng: Random, player: Player, action: str, amount: int = 0, words: str = "") -> None:
     """Perform one action from the player's current screen, or raise NotOffered."""
     offered = {choice.action: choice for choice in screen(player).choices}
     if action not in offered:
@@ -331,16 +422,70 @@ def act(rng: Random, player: Player, action: str, amount: int = 0) -> None:
 
     elif action == "seek":
         c.fights_left -= 1
-        player.fight = rules.open_fight(rng, c, rules.random_creature(rng, c))
-        player.scene = FIGHT
-        player.notice.append(text.FIGHT_OPENS.format(foe=player.fight.foe.name))
-        player.notice += _narrate(player.fight)
-        _after_blows(rng, player)
+        if rules.is_event(rng):
+            kind = rules.roll_event(rng, c)
+            if kind in data.INSTANT_EVENTS:
+                _event_outcome(rng, player, rules.resolve_event(rng, c, kind))
+            else:
+                player.event, player.scene = kind, EVENT
+        else:
+            _start_fight(rng, player, rules.random_creature(rng, c))
+
+    elif action.startswith("event:"):
+        try:
+            result = rules.resolve_event(rng, c, player.event, action.removeprefix("event:"), amount)
+        except ValueError:
+            player.notice.append(text.KNUCKLES_REFUSED)      # a stake he will not take; ask again
+            return
+        player.event, player.scene = None, SLOPES
+        _event_outcome(rng, player, result)
+
+    elif action == "knucklebones":
+        try:
+            won = rules.apply_knucklebones(rng, c, amount)
+            player.notice.append((text.KNUCKLES_WON if won else text.KNUCKLES_LOST).format(n=amount))
+        except ValueError:
+            player.notice.append(text.KNUCKLES_REFUSED)
+
+    elif action.startswith("calling:"):
+        rules.apply_new_calling(c, action.removeprefix("calling:"))
+        player.notice.append(text.NEW_CALLING.format(calling=data.CALLINGS[c.calling][0], rank=c.rank))
 
     elif action.startswith("fight:"):
         rules.take_turn(rng, c, player.fight, action.removeprefix("fight:"))
         player.notice += _narrate(player.fight)
         _after_blows(rng, player)
+
+    elif action == "song":
+        song, n = rules.apply_song(rng, c)
+        name, lyric, blessing = text.SONGS[song]
+        player.notice += [name, *lyric, blessing.format(n=n)]
+
+    elif action == "room":
+        try:
+            player.notice.append(text.ROOM_TAKEN.format(price=rules.apply_room(c)))
+        except ValueError:
+            player.notice.append(text.ROOM_REFUSED)
+
+    elif action == "wine":
+        try:
+            price, healed = rules.apply_wine(c)
+            player.notice.append(text.WINE.format(price=price, healed=healed))
+            player.notice.append(text.GOSSIP[rng.randint(0, len(text.GOSSIP) - 1)])
+        except ValueError:
+            player.notice.append(text.WINE_REFUSED)
+
+    elif action == "wall:write":
+        try:
+            line = rules.clean_wall_line(words)
+            if contains_url(line):
+                raise ValueError("no links")
+        except ValueError:
+            player.notice.append(text.WALL_REFUSED)
+        else:
+            c.wall_today += 1
+            player.happenings.append((WROTE, line))
+            player.notice.append(text.WALL_WRITTEN)
 
     elif action == "garden":
         c.fights_left -= 1

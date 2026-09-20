@@ -246,7 +246,7 @@ def test_a_full_ascent_and_the_start_of_the_next_using_only_the_screens():
     assert c.ascents == 1, f"no ascent in {day} days (level {c.level})"
     assert 25 <= day <= 70
     assert (scenes.ASCENDED, "Ladon") in heard
-    assert (c.level, c.weapon, c.vault, c.rank, c.calling) == (1, 1, 0, 11, data.TORCH)
+    assert (c.level, c.weapon, c.vault, c.calling) == (1, 1, 0, data.TORCH) and c.rank >= 11
     assert player.scene == "summit" and rules.title(c.ascents) == "Apple-Bearer"
 
     # And the next morning the climb simply begins again.

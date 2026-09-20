@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from lib.climb import clock, data, rules, scenes, store, text
-from lib.deps import require_user
+from lib.deps import require_admin, require_user
 from lib.templating import templates, _add_globals
 
 router = APIRouter()
@@ -25,6 +25,34 @@ rng = secrets.SystemRandom()
 
 def _back() -> RedirectResponse:
     return RedirectResponse(PAGE, status_code=303)
+
+
+def _day_label(day, today) -> str:
+    age = (today - day).days
+    return "Today" if age == 0 else "Yesterday" if age == 1 else day.strftime("%A")
+
+
+def _news_line(kind: str, username: str, detail: str, player: store.Player) -> str:
+    """Stentor's wording for something a climber did. Variants rotate with the turn."""
+    variants = text.NEWS[kind]
+    c = player.climber
+    return variants[player.turn % len(variants)].format(
+        name=username, band=data.BANDS[c.level - 1],
+        detail=c.ascents if kind == scenes.ASCENDED else detail,
+    )
+
+
+async def _tell_the_town(user: dict, player: store.Player, today) -> None:
+    """Act on what just happened, once the save that made it real has succeeded."""
+    for kind, detail in player.happenings:
+        if kind == scenes.WROTE:
+            await store.add_wall_line(user["id"], detail)
+            continue
+        if kind in (scenes.LEVEL_GAINED, scenes.ASCENDED):
+            await store.record_score(
+                user["id"], rules.renown(player.climber), detail, won=kind == scenes.ASCENDED,
+            )
+        await store.add_news(today, user["id"], _news_line(kind, user["username"], detail, player))
 
 
 @router.get(PAGE, response_class=HTMLResponse)
@@ -50,6 +78,14 @@ async def climb_page(request: Request, user: dict = Depends(require_user)):
                 for row in await store.rankings()
             ]
             context["stele_empty"] = text.STELE_EMPTY
+        elif player.scene == scenes.HERALD and player.climber.alive:
+            today = clock.today()
+            await store.ensure_daily_line(today, text.DAILY[today.toordinal() % len(text.DAILY)])
+            context["news"] = [(_day_label(day, today), lines) for day, lines in await store.news(today)]
+            context["news_quiet"] = text.HERALD_QUIET
+        elif player.scene == scenes.WALL and player.climber.alive:
+            context["wall"] = await store.wall_lines()
+            context["wall_empty"] = text.WALL_EMPTY
     return templates.TemplateResponse(
         "climb.html",
         _add_globals(request, {"user": user, "game_title": text.TITLE, "credit": data.CREDIT, **context}),
@@ -62,6 +98,7 @@ async def climb_act(
     action: str = Form(max_length=40),
     turn: int = Form(0, ge=0),
     amount: int = Form(0, ge=0, le=10**12),
+    words: str = Form("", max_length=400),
     user: dict = Depends(require_user),
 ):
     """Perform one action. Anything stale, repeated, or not on offer is ignored."""
@@ -73,7 +110,9 @@ async def climb_act(
             climber, notice = scenes.begin(action)
         except scenes.NotOffered:
             return _back()
-        await store.create(user["id"], climber, today, notice)
+        created = await store.create(user["id"], climber, today, notice)
+        if created is not None:
+            await store.add_news(today, user["id"], _news_line(scenes.ARRIVED, user["username"], "", created))
         return _back()
 
     # A form from an earlier screen (double-click, second tab, back button).
@@ -85,13 +124,27 @@ async def climb_act(
         return _back()
 
     try:
-        scenes.act(rng, player, action, amount)
+        scenes.act(rng, player, action, amount, words)
     except scenes.NotOffered:
         return _back()
     if await store.save(player):
-        # Only once the action has really happened does the rest of the BBS hear of it.
-        for kind, beaten in player.happenings:
-            await store.record_score(
-                user["id"], rules.renown(player.climber), beaten, won=kind == scenes.ASCENDED,
-            )
+        await _tell_the_town(user, player, today)
+    return _back()
+
+
+# ---------------------------------------------------------------------------
+# Sysop tools
+# ---------------------------------------------------------------------------
+
+@router.post(f"{PAGE}/admin/wall/{{line_id}}/delete")
+async def climb_admin_wall_delete(line_id: int, user: dict = Depends(require_admin)):
+    """Remove one line from the tavern wall."""
+    await store.delete_wall_line(line_id)
+    return _back()
+
+
+@router.post(f"{PAGE}/admin/reset/{{user_id}}")
+async def climb_admin_reset(user_id: int, user: dict = Depends(require_admin)):
+    """Delete a climber outright; their owner may start again from nothing."""
+    await store.delete(user_id)
     return _back()

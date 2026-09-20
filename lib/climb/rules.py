@@ -42,6 +42,15 @@ class Climber:
     skill_left: int = 0
     alive: bool = True
     gate_tried_today: bool = False
+    # Today only; all cleared at dawn.
+    sung_today: bool = False
+    hp_boost: int = 0               # "Bronze and Breath": extra max HP until dawn
+    mercy: bool = False             # "A Stone Remembers": the next lethal fight cannot kill
+    room: bool = False              # sleeping at the Lethe House tonight, not the Camp
+    wall_today: int = 0
+    knucklebones_today: int = 0
+    # Known for good, through every ascent: the way to the Shepherds' Fire.
+    fire_known: bool = False
 
 
 @dataclass
@@ -70,6 +79,7 @@ class Fight:
     foe_hp: int
     can_run: bool = True
     lethal: bool = True             # gatekeepers leave you at 1 HP instead
+    mercy: bool = False             # a blessing: a killing blow ends the fight at 1 HP instead
     scorched: bool = False          # the foe's next blow is halved
     picked: int = 0                 # extra drachmae lifted by Quick Hands
     outcome: Outcome = Outcome.ONGOING
@@ -91,7 +101,7 @@ def new_climber(calling: str) -> Climber:
 
 
 def max_hp(c: Climber) -> int:
-    return data.MAX_HP[c.level - 1] + c.hp_gift
+    return data.MAX_HP[c.level - 1] + c.hp_gift + c.hp_boost
 
 
 def attack_power(c: Climber) -> int:
@@ -211,10 +221,12 @@ def _foe_strikes(rng: Random, c: Climber, fight: Fight) -> None:
     c.hp -= blow
     fight.events.append(("foe_hits", blow))
     if c.hp <= 0:
-        if fight.lethal:
-            c.hp = 0
-        else:
+        if fight.mercy:
             c.hp = 1
+            fight.outcome = Outcome.FLED
+            fight.events.append(("stone_saves", 0))
+            return
+        c.hp = 0 if fight.lethal else 1
         fight.outcome = Outcome.LOST
         fight.events.append(("you_fall", 0))
 
@@ -243,6 +255,8 @@ def open_fight(rng: Random, c: Climber, foe: Foe) -> Fight:
         can_run=foe.kind in (CREATURE, CLIMBER),
         lethal=foe.kind != GATEKEEPER,
     )
+    if c.mercy and fight.lethal:          # not wasted on a gatekeeper, who kills nobody
+        fight.mercy, c.mercy = True, False
     ambushed = rng.random() >= data.FIRST_STRIKE_CHANCE
     if ambushed and c.calling != data.SANDAL:
         fight.events.append(("ambush", 0))
@@ -388,6 +402,271 @@ def apply_dawn(c: Climber) -> None:
     c.duels_left = data.DUELS_PER_DAY
     c.skill_left = skill_uses_per_day(c)
     c.gate_tried_today = False
+    c.sung_today = c.mercy = c.room = False
+    c.hp_boost = c.wall_today = c.knucklebones_today = 0
+    c.hp = max_hp(c)
+
+
+# ---------------------------------------------------------------------------
+# The Slopes: events
+# ---------------------------------------------------------------------------
+
+@dataclass
+class EventResult:
+    """What came of an event: a line of text by key, a number for it, maybe a fight."""
+
+    key: str
+    n: int = 0
+    foe: Foe | None = None
+    news: bool = False              # worth the Herald's breath
+
+
+def is_event(rng: Random) -> bool:
+    return rng.random() < data.EVENT_CHANCE
+
+
+def roll_event(rng: Random, c: Climber) -> str:
+    pick = rng.randint(1, 100)
+    for name, weight in data.EVENTS:
+        if pick <= weight:
+            # Finding the Fire twice is just finding your way; have an eagle instead.
+            return "eagle" if name == "smoke" and c.fire_known else name
+        pick -= weight
+    raise AssertionError("event weights do not sum to 100")
+
+
+def _lose_share(c: Climber, share: float) -> int:
+    """Lose a share of max HP, but never the last point: events do not kill."""
+    lost = min(c.hp - 1, max(1, round(max_hp(c) * share)))
+    c.hp -= lost
+    return lost
+
+
+def satyr_max_stake(c: Climber) -> int:
+    return min(c.purse, _kills_worth(c, data.SATYR_MAX_STAKE_KILLS))
+
+
+def event_options(c: Climber, kind: str) -> tuple[str, ...]:
+    """The choices an event puts to this climber. The last always walks away."""
+    options = list(data.EVENT_OPTIONS[kind])
+    if kind == "satyr" and c.purse < 1:
+        options.remove("wager")
+    if kind == "shrine" and c.purse < _kills_worth(c, data.SHRINE_OFFERING_KILLS):
+        options.remove("offer")
+    if kind == "toll" and c.purse < _kills_worth(c, data.TOLL_KILLS):
+        options.remove("pay")
+    return tuple(options)
+
+
+def resolve_event(rng: Random, c: Climber, kind: str, option: str = "", amount: int = 0) -> EventResult:
+    """Carry out an instant event, or the option chosen for one that asked."""
+    if kind in data.INSTANT_EVENTS:
+        if kind == "spring":
+            healed = max_hp(c) - c.hp
+            c.hp = max_hp(c)
+            return EventResult("spring", healed)
+        if kind == "rockslide":
+            return EventResult("rockslide", _lose_share(c, data.ROCKSLIDE_SHARE))
+        if kind == "eagle":
+            found = _kills_worth(c, data.EAGLE_KILLS)
+            c.purse += found
+            return EventResult("eagle", found)
+        if kind == "oracle":
+            needed = xp_to_next(c.level)
+            if needed is None:
+                return EventResult("oracle_garden")
+            return EventResult("oracle", max(0, needed - c.xp))
+        if kind == "shade":
+            c.rank = min(data.MAX_RANK, c.rank + 1)
+            return EventResult("shade", c.rank)
+        c.fire_known = True
+        return EventResult("smoke")
+
+    if option not in event_options(c, kind):
+        raise ValueError(f"cannot {option!r} at {kind!r}")
+    if option == event_options(c, kind)[-1]:
+        return EventResult(f"{kind}_{option}")
+
+    if kind == "boulder":
+        lost = _lose_share(c, data.BOULDER_HP_SHARE)
+        c.xp += data.REF_XP[c.level - 1]
+        if rng.random() < data.BOULDER_LESSON_CHANCE:
+            c.rank = min(data.MAX_RANK, c.rank + 1)
+            return EventResult("boulder_lesson", lost)
+        return EventResult("boulder_help", lost)
+
+    if kind == "wall":
+        if rng.random() < data.WALL_GARDENER_CHANCE:
+            strongest = creature(c.level, data.CREATURES_PER_BAND, c.ascents)
+            gardener = Foe(
+                name="Furious Gardener",
+                hp=round(strongest.hp * data.GARDENER_FACTOR),
+                attack=round(strongest.attack * data.GARDENER_FACTOR),
+                xp=strongest.xp, drachmae=strongest.drachmae,
+            )
+            return EventResult("wall_gardener", foe=gardener)
+        c.seeds += 1
+        return EventResult("wall_take", c.seeds)
+
+    if kind == "satyr":
+        if not 1 <= amount <= satyr_max_stake(c):
+            raise ValueError("not a stake you can make")
+        chance = min(data.SATYR_MAX_CHANCE, data.SATYR_BASE_CHANCE + data.SATYR_CHARM_STEP * c.charm)
+        if rng.random() < chance:
+            c.purse += amount
+            return EventResult("satyr_won", amount)
+        c.purse -= amount
+        return EventResult("satyr_lost", amount)
+
+    if kind == "kid":
+        if option == "carry":
+            c.charm += 1
+            return EventResult("kid_carry", c.charm, news=True)
+        price = _kills_worth(c, data.KID_SALE_KILLS)
+        c.purse += price
+        return EventResult("kid_sell", price)
+
+    if kind == "shrine":
+        c.purse -= _kills_worth(c, data.SHRINE_OFFERING_KILLS)
+        if rng.random() < data.SHRINE_CHANCE:
+            c.fights_left += data.SHRINE_EXTRA_FIGHTS
+            return EventResult("shrine_pleased", data.SHRINE_EXTRA_FIGHTS)
+        return EventResult("shrine_silent")
+
+    if kind == "hive":
+        if rng.random() < data.HIVE_HONEY_CHANCE:
+            c.hp_gift += data.HIVE_HONEY_HP
+            c.hp += data.HIVE_HONEY_HP
+            return EventResult("hive_honey", data.HIVE_HONEY_HP)
+        return EventResult("hive_stung", _lose_share(c, data.HIVE_STING_SHARE))
+
+    # toll
+    if option == "pay":
+        toll = _kills_worth(c, data.TOLL_KILLS)
+        c.purse -= toll
+        return EventResult("toll_pay", toll)
+    strongest = creature(c.level, data.CREATURES_PER_BAND, c.ascents)
+    strongest.name = "Toll-Taker"
+    strongest.drachmae *= data.TOLL_FIGHT_PAYS
+    return EventResult("toll_fight", foe=strongest)
+
+
+# ---------------------------------------------------------------------------
+# The Shepherds' Fire
+# ---------------------------------------------------------------------------
+
+def knucklebones_max_stake(c: Climber) -> int:
+    if not c.alive or c.knucklebones_today >= data.KNUCKLEBONES_PER_DAY:
+        return 0
+    return min(c.purse, _kills_worth(c, data.KNUCKLEBONES_MAX_STAKE_KILLS))
+
+
+def apply_knucklebones(rng: Random, c: Climber, stake: int) -> bool:
+    """An even-money throw. Returns True on a win."""
+    if not 1 <= stake <= knucklebones_max_stake(c):
+        raise ValueError("not a stake you can make")
+    c.knucklebones_today += 1
+    won = rng.random() < data.KNUCKLEBONES_WIN_CHANCE
+    c.purse += stake if won else -stake
+    return won
+
+
+def apply_new_calling(c: Climber, calling: str) -> None:
+    """Change calling at the Fire. Half of what you knew comes with you."""
+    if calling not in data.CALLINGS or calling == c.calling or not c.alive:
+        raise ValueError("not a calling you can take up")
+    c.calling = calling
+    c.rank //= 2
+    c.skill_left = min(c.skill_left, skill_uses_per_day(c))
+
+
+# ---------------------------------------------------------------------------
+# The Lethe House
+# ---------------------------------------------------------------------------
+
+def _kills_worth(c: Climber, kills: float) -> int:
+    return max(1, round(data.REF_DRACHMAE[c.level - 1] * kills))
+
+
+def apply_song(rng: Random, c: Climber) -> tuple[str, int]:
+    """Orpheus sings, once a day. Returns (song, size of its blessing)."""
+    if not c.alive or c.sung_today:
+        raise ValueError("Orpheus has sung for you today")
+    c.sung_today = True
+    pick, song = rng.random(), data.SONGS[-1][0]
+    for name, share in data.SONGS:
+        if pick < share:
+            song = name
+            break
+        pick -= share
+
+    if song == "road":
+        c.fights_left += data.ROAD_EXTRA_FIGHTS
+        return song, data.ROAD_EXTRA_FIGHTS
+    if song == "bronze":
+        c.hp_boost = round(data.MAX_HP[c.level - 1] * data.BRONZE_HP_BOOST)
+        c.hp = max_hp(c)
+        return song, c.hp_boost
+    if song == "ferryman":
+        purse = _kills_worth(c, data.FERRYMAN_KILLS)
+        c.purse += purse
+        return song, purse
+    if song == "goatherd":
+        xp = data.REF_XP[c.level - 1]
+        c.xp += xp
+        return song, xp
+    if song == "sisters":
+        c.skill_left += 1
+        return song, 1
+    if song == "stone":
+        c.mercy = True
+        return song, 0
+    if song == "eurydice":
+        c.charm += 1
+        return song, 1
+    return song, 0                        # he broke a string
+
+
+def room_price(c: Climber) -> int:
+    return _kills_worth(c, data.ROOM_PRICE_IN_KILLS)
+
+
+def apply_room(c: Climber) -> int:
+    """A bed at the Lethe House: nobody robs you tonight. Returns the price."""
+    if not c.alive or c.room:
+        raise ValueError("no room to take")
+    price = room_price(c)
+    if price > c.purse:
+        raise ValueError("not enough drachmae in hand")
+    c.purse -= price
+    c.room = True
+    return price
+
+
+def wine_price(c: Climber) -> int:
+    return _kills_worth(c, data.WINE_PRICE_IN_KILLS)
+
+
+def apply_wine(c: Climber) -> tuple[int, int]:
+    """A cup of wine. Returns (price, hit points restored)."""
+    price = wine_price(c)
+    if not c.alive or price > c.purse:
+        raise ValueError("no wine for you")
+    healed = min(max_hp(c) - c.hp, max(1, round(max_hp(c) * data.WINE_HEAL_SHARE)))
+    c.purse -= price
+    c.hp += healed
+    return price, healed
+
+
+def clean_wall_line(words: str) -> str:
+    """Tidy what someone wants to scratch into the wall, or raise ValueError."""
+    # Whitespace first: a newline is "unprintable", and dropping it outright
+    # would glue the words on either side of it together.
+    words = " ".join(words.split())
+    words = "".join(ch for ch in words if ch.isprintable())
+    if not 1 <= len(words) <= data.WALL_LINE_LENGTH:
+        raise ValueError("too short or too long")
+    return words
 
 
 # ---------------------------------------------------------------------------

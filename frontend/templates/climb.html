@@ -34,13 +34,48 @@
             <td class="c-gold">{{ row.ascents }}</td>
             <td>{{ row.band }} <span class="c-dim">({{ row.level }})</span></td>
             <td>{{ row.calling }}</td>
-            <td>{% if not row.alive %}<span class="c-blood">dead until dawn</span>{% endif %}</td>
+            <td>{% if not row.alive %}<span class="c-blood">dead until dawn</span>{% endif %}
+                {% if user.access_level >= 1 %}
+                <form method="post" action="/games/climb/admin/reset/{{ row.user_id }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn-danger btn-small" data-confirm="Delete {{ row.username }}'s climber? They will start again from nothing.">Reset</button>
+                </form>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </table>
     {% else %}
     <p class="c-dim">{{ stele_empty }}</p>
     {% endif %}
+    {% endif %}
+
+    {% if news is defined %}
+    {% for label, lines in news %}
+    <div class="climb-news">
+        <h3>{{ label }}</h3>
+        {% for line in lines %}<p>{{ line }}</p>{% endfor %}
+    </div>
+    {% else %}
+    <p class="c-dim">{{ news_quiet }}</p>
+    {% endfor %}
+    {% endif %}
+
+    {% if wall is defined %}
+    <div class="climb-wall">
+        {% for entry in wall %}
+        <p><span class="c-sky">{{ entry.username }}</span> <span class="c-dim">scratched:</span> {{ entry.line }}
+            {% if user.access_level >= 1 %}
+            <form method="post" action="/games/climb/admin/wall/{{ entry.id }}/delete" class="inline-form ml-5">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-danger btn-small">x</button>
+            </form>
+            {% endif %}
+        </p>
+        {% else %}
+        <p class="c-dim">{{ wall_empty }}</p>
+        {% endfor %}
+    </div>
     {% endif %}
 
     {% if screen.choices %}
@@ -52,8 +87,10 @@
             <input type="hidden" name="action" value="{{ choice.action }}">
             {% if choice.amount %}
             <input type="number" name="amount" min="1" max="{{ choice.most }}" required class="climb-amount" aria-label="{{ choice.label }}" data-key="{{ choice.key }}">
+            {% elif choice.words %}
+            <input type="text" name="words" maxlength="120" required class="climb-words" aria-label="{{ choice.label }}" data-key="{{ choice.key }}" autocomplete="off">
             {% endif %}
-            <button type="submit" {% if not choice.amount %}data-key="{{ choice.key }}"{% endif %}>{{ choice.label }}</button>
+            <button type="submit" {% if not choice.amount and not choice.words %}data-key="{{ choice.key }}"{% endif %}>{{ choice.label }}</button>
         </form>
         {% endfor %}
     </div>

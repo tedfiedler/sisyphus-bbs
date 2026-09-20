@@ -260,6 +260,8 @@ def _play_a_day(rng, player):
         return any(choice.action == action for choice in scenes.screen(player).choices)
 
     def fight():
+        if player.scene == "event":                          # cautious: always walk away
+            scenes.act(rng, player, scenes.screen(player).choices[-1].action)
         while player.fight is not None:
             scenes.act(rng, player, "fight:attack")
 
@@ -313,4 +315,4 @@ def test_the_garden_wall_can_be_reached_using_only_what_the_screens_offer():
     assert player.climber.level == data.LEVELS, f"stuck at level {player.climber.level} after {day} days"
     assert levels_seen == set(range(1, 13))
     assert 20 <= day <= 45
-    assert player.climber.rank == 11                          # one for each gatekeeper
+    assert player.climber.rank >= 11                          # one for each gatekeeper, plus any lessons met on the way

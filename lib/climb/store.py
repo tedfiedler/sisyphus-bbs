@@ -6,9 +6,9 @@ them into JSON and back, and is the only place that knows the table exists.
 
 import json
 from dataclasses import asdict, dataclass, field, fields
-from datetime import date
+from datetime import date, timedelta
 
-from lib.climb import rules
+from lib.climb import data, rules
 from lib.db import get_db
 
 AGORA = "agora"
@@ -21,6 +21,7 @@ class Player:
     turn: int = 0
     scene: str = AGORA
     fight: rules.Fight | None = None
+    event: str | None = None            # a Slopes event waiting for the climber's choice
     notice: list[str] = field(default_factory=list)      # what the last action looked like
     last_day: date | None = None
     # Things the rest of the BBS should hear about (a level gained, an ascent).
@@ -60,6 +61,7 @@ def _from_row(row) -> Player:
         climber=rules.Climber(**_known(rules.Climber, json.loads(row["climber"]))),
         scene=row["scene"],
         fight=_fight_from_json(row["fight"]),
+        event=row["event"],
         notice=json.loads(row["notice"]),
         last_day=date.fromisoformat(row["last_day"]),
     )
@@ -97,12 +99,12 @@ async def save(player: Player) -> bool:
     db = await get_db()
     cursor = await db.execute(
         """UPDATE climb_players
-           SET climber = ?, scene = ?, fight = ?, notice = ?, last_day = ?,
+           SET climber = ?, scene = ?, fight = ?, event = ?, notice = ?, last_day = ?,
                turn = turn + 1, last_seen = CURRENT_TIMESTAMP
            WHERE user_id = ? AND turn = ?""",
         (
             json.dumps(asdict(player.climber)), player.scene, _fight_to_json(player.fight),
-            json.dumps(player.notice), player.last_day.isoformat(),
+            player.event, json.dumps(player.notice), player.last_day.isoformat(),
             player.user_id, player.turn,
         ),
     )
@@ -120,7 +122,7 @@ async def rankings(limit: int = 25) -> list[dict]:
     """The Stele: climbers seen in the last fortnight, most accomplished first."""
     db = await get_db()
     cursor = await db.execute(
-        f"""SELECT u.username,
+        f"""SELECT u.id AS user_id, u.username,
                    json_extract(p.climber, '$.ascents') AS ascents,
                    json_extract(p.climber, '$.level') AS level,
                    json_extract(p.climber, '$.xp') AS xp,
@@ -142,6 +144,75 @@ async def record_score(user_id: int, score: int, opponent: str, won: bool) -> No
         "INSERT INTO game_scores (user_id, game, score, opponent, won) VALUES (?, 'climb', ?, ?, ?)",
         (user_id, score, opponent, int(won)),
     )
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# The Herald
+# ---------------------------------------------------------------------------
+
+async def add_news(day: date, user_id: int | None, line: str) -> None:
+    """Post a line, and let anything older than the Herald remembers fall off."""
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO climb_news (day, user_id, line) VALUES (?, ?, ?)", (day.isoformat(), user_id, line)
+    )
+    oldest = day - timedelta(days=data.NEWS_DAYS - 1)
+    await db.execute("DELETE FROM climb_news WHERE day < ?", (oldest.isoformat(),))
+    await db.commit()
+
+
+async def ensure_daily_line(day: date, line: str) -> None:
+    """The town's own line for the day, written by whoever looks first."""
+    db = await get_db()
+    await db.execute(
+        """INSERT INTO climb_news (day, user_id, line)
+           SELECT ?, NULL, ?
+           WHERE NOT EXISTS (SELECT 1 FROM climb_news WHERE day = ? AND user_id IS NULL)""",
+        (day.isoformat(), line, day.isoformat()),
+    )
+    await db.commit()
+
+
+async def news(today: date) -> list[tuple[date, list[str]]]:
+    """Recent news, newest day first; within a day, the town's line then events in order."""
+    db = await get_db()
+    oldest = today - timedelta(days=data.NEWS_DAYS - 1)
+    cursor = await db.execute(
+        """SELECT day, line FROM climb_news WHERE day >= ? AND day <= ?
+           ORDER BY day DESC, user_id IS NOT NULL, id""",
+        (oldest.isoformat(), today.isoformat()),
+    )
+    days: dict[str, list[str]] = {}
+    for row in await cursor.fetchall():
+        days.setdefault(row["day"], []).append(row["line"])
+    return [(date.fromisoformat(day), lines) for day, lines in days.items()]
+
+
+# ---------------------------------------------------------------------------
+# The tavern wall
+# ---------------------------------------------------------------------------
+
+async def wall_lines() -> list[dict]:
+    """The most recent lines, oldest first, as they would read down a wall."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT w.id, w.line, u.username FROM climb_wall w JOIN users u ON u.id = w.user_id
+           ORDER BY w.id DESC LIMIT ?""",
+        (data.WALL_LINES_SHOWN,),
+    )
+    return [dict(row) for row in reversed(await cursor.fetchall())]
+
+
+async def add_wall_line(user_id: int, line: str) -> None:
+    db = await get_db()
+    await db.execute("INSERT INTO climb_wall (user_id, line) VALUES (?, ?)", (user_id, line))
+    await db.commit()
+
+
+async def delete_wall_line(line_id: int) -> None:
+    db = await get_db()
+    await db.execute("DELETE FROM climb_wall WHERE id = ?", (line_id,))
     await db.commit()
 
 

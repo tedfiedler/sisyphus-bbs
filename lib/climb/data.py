@@ -151,6 +151,65 @@ TITLES = (
     (3, "Thrice-Risen"), (2, "Twice-Risen"), (1, "Apple-Bearer"), (0, "Climber"),
 )
 
+# --- the Slopes: things that are not fights ------------------------------------
+EVENT_CHANCE = 1 / 8
+# (event, weight); weights sum to 100. The first six resolve at once; the rest
+# put a choice to the climber.
+EVENTS = (
+    ("spring", 11), ("rockslide", 9), ("eagle", 11), ("oracle", 7), ("shade", 2), ("smoke", 4),
+    ("boulder", 12), ("wall", 8), ("satyr", 8), ("kid", 7), ("shrine", 7), ("hive", 7), ("toll", 7),
+)
+INSTANT_EVENTS = frozenset({"spring", "rockslide", "eagle", "oracle", "shade", "smoke"})
+EVENT_OPTIONS = {
+    # The last option always walks away at no cost.
+    "boulder": ("help", "around"),
+    "wall": ("take", "leave"),
+    "satyr": ("wager", "decline"),
+    "kid": ("carry", "sell", "leave"),
+    "shrine": ("offer", "pass"),
+    "hive": ("reach", "leave"),
+    "toll": ("pay", "fight", "back"),
+}
+ROCKSLIDE_SHARE = 0.20
+EAGLE_KILLS = 2.0
+BOULDER_HP_SHARE = 0.25
+BOULDER_LESSON_CHANCE = 0.10
+WALL_GARDENER_CHANCE = 0.25
+GARDENER_FACTOR = 1.10
+SATYR_BASE_CHANCE, SATYR_CHARM_STEP, SATYR_MAX_CHANCE = 0.45, 0.01, 0.65
+SATYR_MAX_STAKE_KILLS = 15
+KID_SALE_KILLS = 1.5
+SHRINE_OFFERING_KILLS = 1.0
+SHRINE_CHANCE = 1 / 3
+SHRINE_EXTRA_FIGHTS = 3
+HIVE_HONEY_CHANCE = 0.5
+HIVE_HONEY_HP = 2
+HIVE_STING_SHARE = 1 / 3
+TOLL_KILLS = 1.0
+TOLL_FIGHT_PAYS = 2           # times the creature's usual purse
+
+# --- the Shepherds' Fire ---------------------------------------------------------
+KNUCKLEBONES_PER_DAY = 3
+KNUCKLEBONES_MAX_STAKE_KILLS = 10
+KNUCKLEBONES_WIN_CHANCE = 0.5
+
+# --- the Lethe House ----------------------------------------------------------
+# Orpheus' songs and how often he picks each. The shares sum to 1.
+SONGS = (
+    ("road", 0.18), ("bronze", 0.18), ("ferryman", 0.18), ("goatherd", 0.18),
+    ("sisters", 0.12), ("stone", 0.08), ("eurydice", 0.04), ("string", 0.04),
+)
+ROAD_EXTRA_FIGHTS = 3
+BRONZE_HP_BOOST = 0.10
+FERRYMAN_KILLS = 3            # a purse worth this many kills at your band
+ROOM_PRICE_IN_KILLS = 2.0
+WINE_PRICE_IN_KILLS = 0.5
+WINE_HEAL_SHARE = 0.15
+WALL_LINES_SHOWN = 15
+WALL_LINES_PER_DAY = 5
+WALL_LINE_LENGTH = 120
+NEWS_DAYS = 3
+
 # The Orchard Gate: what two pomegranate seeds buy, permanently.
 SEEDS_PER_GIFT = 2
 GIFTS = {"strength": 2, "defence": 2, "vigour": 5}
@@ -160,3 +219,6 @@ CREDIT = "In the tradition of the BBS door games of the early '90s."
 assert len(CREATURES) == LEVELS and all(len(band) == CREATURES_PER_BAND for band in CREATURES)
 assert len(GATEKEEPERS) == LEVELS - 1 == len(XP_TO_NEXT)
 assert len(WEAPONS) == len(ARMOURS) == len(BANDS) == LEVELS
+assert abs(sum(share for _, share in SONGS) - 1) < 1e-9
+assert sum(weight for _, weight in EVENTS) == 100
+assert {name for name, _ in EVENTS} == INSTANT_EVENTS | set(EVENT_OPTIONS)

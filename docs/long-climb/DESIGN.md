@@ -203,7 +203,7 @@ All original. Each costs the slope fight that found it.
 | **Crossroads shrine** | Leave an offering to Hermes. One in three, he is pleased: +3 slope fights today. |
 | **Wild hive** | Reach in: honey (+2 max HP, permanently) or stings (lose a third of your HP; never fatal). |
 | **Rockslide** | Lose HP; never fatal. |
-| **Wandering oracle** | Tells you one true thing: how far to your next gate, who is sleeping rich at the Camp tonight, or what Ladon is weak to today. |
+| **Wandering oracle** | Tells you one true thing: how far it is to your next gate or, at the wall, what the garden will ask of you. (Who is sleeping rich at the Camp joins this in step 6. "What Ladon is weak to" was dropped: he has no such weakness to reveal.) |
 | **Eagle's gift** | An eagle drops something shiny: drachmae scaled to your band. |
 | **Toll-taker** | Pay a small toll, or fight a strong creature for double coin. |
 | **Shade of a fallen climber** | Rare. They finish a lesson they were learning when they died: +1 calling rank. |
@@ -566,7 +566,7 @@ are the argument for having one:
 | 2 ✅ | Schema, `store.py`, dawn, scenes, the Agora, the Slopes, combat, death, Hygieia, the Vault | **Done 2026-09-20.** A character can be created and can fight, die, heal, bank, and wake tomorrow — through the routes, under test (`tests/test_climb_routes.py`), and by keyboard alone in a real browser under the CSP. |
 | 3 ✅ | Forge, Aegis Row, Palaestra and gatekeepers, the Orchard Gate | **Done 2026-09-20.** Level 1 → 12 is playable: a test bot that can see only what the screens offer climbs from the Foothills to the Garden Wall in about a month of game days (`tests/test_climb_town.py`). |
 | 4 ✅ | Ladon, ascent and reset, titles, the Stele, `game_scores` | **Done 2026-09-20.** The whole loop closes: a test bot that sees only the screens climbs, kills Ladon, wakes in the Foothills with its calling rank and an ascent to its name, and starts again (`tests/test_climb_summit.py`). **Steps 1–4 are a complete single-player game.** |
-| 5 | The Lethe House: Orpheus, the wall, rooms, Nikandros; the Herald; events | The town feels inhabited with one player. |
+| 5 ✅ | The Lethe House: Orpheus, the wall, rooms, Nikandros; the Herald; events | **Done 2026-09-20.** Orpheus' eight songs, the wall (the only player-written text: escaped, no links, five lines a day, sysop can remove), rooms, wine and gossip; the Herald's three days of news; thirteen Slopes events including the man with the boulder; the hidden Shepherds' Fire (knucklebones, change of calling); and both sysop tools. Deferred to step 6, where they have a use: Nikandros' key, and "ask about someone" at the Fire. |
 | 6 | The Camp and robbery; the key | Two-player tests, as for Mille Bornes PvP. |
 | 7 | Courtship: the regulars, then other climbers with opt-in and closed doors | Consent rules are tests, not comments. |
 | 8 | All prose in `text.py`; read-through for tone; hotkeys; phone layout; headless-browser pass under the CSP | It is fun to read. |

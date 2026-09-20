@@ -124,10 +124,28 @@ CREATE TABLE IF NOT EXISTS climb_players (
     climber TEXT NOT NULL,
     scene TEXT NOT NULL DEFAULT 'agora',
     fight TEXT,
+    event TEXT,
     notice TEXT NOT NULL DEFAULT '[]',
     last_day TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- The Herald's news (user_id NULL for the town's own daily line) and the
+-- tavern wall, the only player-written text in the game.
+CREATE TABLE IF NOT EXISTS climb_news (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    day TEXT NOT NULL,
+    user_id INTEGER REFERENCES users(id),
+    line TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_climb_news_day ON climb_news(day);
+
+CREATE TABLE IF NOT EXISTS climb_wall (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    line TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes for the lookups the app makes on every page: thread and board
@@ -166,6 +184,11 @@ async def _migrate(db: aiosqlite.Connection):
     gs_columns = {row[1] for row in await cursor.fetchall()}
     if "game" not in gs_columns:
         await db.execute("ALTER TABLE game_scores ADD COLUMN game TEXT NOT NULL DEFAULT 'mille'")
+
+    # climb_players.event arrived after the table was first deployed.
+    cursor = await db.execute("PRAGMA table_info(climb_players)")
+    if "event" not in {row[1] for row in await cursor.fetchall()}:
+        await db.execute("ALTER TABLE climb_players ADD COLUMN event TEXT")
 
     # Session tokens are stored as SHA-256 hex digests. Rows written before
     # that hold the raw token, which can no longer match a lookup; drop them

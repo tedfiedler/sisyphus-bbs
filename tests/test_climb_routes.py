@@ -10,7 +10,7 @@ from lib.climb import clock, data, rules, scenes, store, text
 from lib.db import get_db
 from lib.routes import climb_routes
 from tests.helpers import anon_client, client_for
-from tests.test_climb_rules import AMBUSH, NO_AMBUSH, PLAIN, STUMBLE, Dice
+from tests.test_climb_rules import AMBUSH, NO_AMBUSH, NO_EVENT, PLAIN, STUMBLE, Dice
 
 PAGE = "/games/climb"
 DAY_ONE = date(2026, 10, 1)
@@ -101,7 +101,8 @@ async def test_a_newcomer_chooses_a_calling(alice, dice):
         html = (await client.get(PAGE)).text
         assert text.BEGUN["torch"] in html
         assert offered(html) == [
-            "go:slopes", "go:forge", "go:aegis", "go:hygieia", "go:vault", "go:palaestra", "go:orchard", "go:stele",
+            "go:slopes", "go:forge", "go:aegis", "go:hygieia", "go:vault", "go:lethe",
+            "go:palaestra", "go:orchard", "go:herald", "go:stele",
         ]
 
         # Asking again does not replace the climber you have.
@@ -136,7 +137,7 @@ async def test_a_fight_won(alice, dice):
         await act(client, "go:slopes")
         assert offered((await client.get(PAGE)).text) == ["seek", "go:agora"]
 
-        dice(chance=[NO_AMBUSH], rolls=[1])                  # rank 1: an Irritable Goat
+        dice(chance=[NO_EVENT, NO_AMBUSH], rolls=[1])                  # rank 1: an Irritable Goat
         await act(client, "seek")
         player = await store.load(alice["id"])
         assert player.scene == "fight" and player.fight.foe.name == "Irritable Goat"
@@ -162,7 +163,7 @@ async def test_looking_at_the_page_never_rolls_dice(alice, dice):
     async with await client_for(alice["id"]) as client:
         await begin(client)
         await act(client, "go:slopes")
-        dice(chance=[NO_AMBUSH], rolls=[8])
+        dice(chance=[NO_EVENT, NO_AMBUSH], rolls=[8])
         await act(client, "seek")
         dice()                                               # any roll now raises
         before = await store.load(alice["id"])
@@ -179,7 +180,7 @@ async def test_a_repeated_or_stale_form_does_nothing(alice, dice):
         await act(client, "go:slopes")
         turn = (await store.load(alice["id"])).turn
 
-        dice(chance=[NO_AMBUSH], rolls=[1])
+        dice(chance=[NO_EVENT, NO_AMBUSH], rolls=[1])
         await act(client, "seek", turn=turn)
         dice()                                               # a second roll would raise
         await act(client, "seek", turn=turn)                 # double-click
@@ -201,7 +202,7 @@ async def test_only_what_the_screen_offers_is_accepted(alice, dice):
         assert player.scene == "agora" and player.fight is None and player.climber.fights_left == 15
 
         await act(client, "go:slopes")
-        dice(chance=[NO_AMBUSH], rolls=[1])
+        dice(chance=[NO_EVENT, NO_AMBUSH], rolls=[1])
         await act(client, "seek")
         dice()
         for cheat in ("go:agora", "go:hygieia", "heal:all", "seek", "vault:deposit_all", "fight:flame", "fight:mend"):
@@ -229,7 +230,7 @@ async def test_the_days_climbing_runs_out(alice, dice):
         await begin(client)
         await tweak(alice["id"], fights_left=1)
         await act(client, "go:slopes")
-        dice(chance=[NO_AMBUSH], rolls=[1])
+        dice(chance=[NO_EVENT, NO_AMBUSH], rolls=[1])
         await act(client, "seek")
         dice(chance=[STUMBLE * 0, ], rolls=[])               # run: escape succeeds on a low roll
         await act(client, "fight:run")
@@ -255,7 +256,7 @@ async def test_death_then_dawn(alice, dice, fixed_day):
         await tweak(alice["id"], hp=1, xp=200)
         await act(client, "go:slopes")
 
-        dice(chance=[AMBUSH], rolls=[8, "max"])              # the Tax Collector strikes first
+        dice(chance=[NO_EVENT, AMBUSH], rolls=[8, "max"])              # the Tax Collector strikes first
         await act(client, "seek")
 
         player = await store.load(alice["id"])
@@ -288,7 +289,7 @@ async def test_dawn_restores_the_living_and_ends_a_fight_left_overnight(alice, d
     async with await client_for(alice["id"]) as client:
         await begin(client)
         await act(client, "go:slopes")
-        dice(chance=[NO_AMBUSH], rolls=[8])
+        dice(chance=[NO_EVENT, NO_AMBUSH], rolls=[8])
         await act(client, "seek")
         await tweak(alice["id"], hp=5, fights_left=3, skill_left=0)
         stale_turn = (await store.load(alice["id"])).turn
@@ -429,10 +430,11 @@ async def test_every_choice_is_a_real_button_with_a_hotkey(alice, dice):
 async def test_every_screen_has_distinct_hotkeys():
     players = []
     for calling in data.CALLINGS:
-        for scene in ("agora", "slopes", "hygieia", "vault", "fight", "forge", "aegis", "palaestra", "orchard", "summit", "stele"):
+        for scene in ("agora", "slopes", "hygieia", "vault", "fight", "forge", "aegis", "palaestra", "orchard", "summit", "stele", "lethe", "wall", "herald", "fire"):
             c = rules.new_climber(calling)
             c.rank, c.skill_left, c.hp, c.vault = 40, 5, 3, 10
             c.level, c.purse, c.seeds, c.xp = 9, 10**9, 4, 10**9       # everything on offer at once
+            c.fire_known = True
             fight = rules.Fight(foe=rules.creature(1, 1), foe_hp=5) if scene == "fight" else None
             players.append(store.Player(user_id=1, climber=c, scene=scene, fight=fight))
     for player in players + [None]:

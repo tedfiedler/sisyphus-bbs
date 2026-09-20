@@ -58,6 +58,10 @@ EVENTS = {
     "fled": "You run. It is not dignified, but you are alive.",
     "shadow": "You step sideways into a shadow that was not there a moment ago.",
     "run_failed": "You turn to run and the scree slides out from under you.",
+    "stone_saves": (
+        "The blow should have finished you. Instead the ground itself seems to take "
+        "it, the way a stone takes rain, and you are somehow back on the path, alone."
+    ),
 }
 
 SPOILS = "You find {drachmae} drachmae and learn {xp} XP worth of caution."
@@ -226,3 +230,236 @@ STELE = (
     "are cut into it, and recut, as climbers pass one another on the way up.",
 )
 STELE_EMPTY = "The stone is blank. Somebody has to be first."
+
+# ---------------------------------------------------------------------------
+# The Lethe House
+# ---------------------------------------------------------------------------
+
+LETHE = (
+    "The Lethe House. Low beams, a good fire, and a sign over the bar that says "
+    "NO ONE REMEMBERS THEIR TAB, which Nikandros insists is a joke.",
+    "Orpheus sits by the hearth, tuning. Kalliste and Theron have the corner "
+    "table, as they do most nights.",
+)
+LETHE_ROOMED = "You have a room upstairs tonight. Nobody will trouble you there."
+ORPHEUS_DONE = "Orpheus has sung for you today. He nods, and goes back to tuning."
+
+# Each song: four lines of lyric, then what it does. {n} is the size of the blessing.
+SONGS = {
+    "road": ("The Road Goes Up", (
+        "The road goes up, and so do you,",
+        "there being nothing else to do;",
+        "and if your legs complain of stone,",
+        "remind them they are not alone."),
+        "Your legs feel new. You can climb {n} more times today."),
+    "bronze": ("Bronze and Breath", (
+        "Bronze for the arm and breath for the chest,",
+        "the smith makes one, the hill the rest;",
+        "breathe in the height, breathe out the fear,",
+        "and carry more of yourself from here."),
+        "You are healed, and until dawn you have {n} more hit points than you did."),
+    "ferryman": ("What the Ferryman Owes", (
+        "He took a coin from everyone",
+        "who ever crossed, and gave back none;",
+        "so when you find one in the grass,",
+        "say thank you to him as you pass."),
+        "Under your stool is a purse nobody claims: {n} drachmae."),
+    "goatherd": ("The Goatherd's Daughter", (
+        "She knew the hill before the hill",
+        "knew her; she walks it, laughing, still.",
+        "Ask her the way. She will not say,",
+        "but watch her feet, and learn the way."),
+        "You understand something about footing that you did not before: {n} XP."),
+    "sisters": ("Nine Sisters", (
+        "Nine sisters sat upon a wall",
+        "and taught the first of us to call",
+        "the thing we need by its right name.",
+        "It comes. It has not always came."),
+        "Orpheus winces at his own rhyme. Still: you may call on your calling {n} more time today."),
+    "stone": ("A Stone Remembers", (
+        "A stone remembers every hand",
+        "that pushed it, and will understand;",
+        "so when the dark comes for your breath,",
+        "the stone will take it, and not death."),
+        "You are not sure what that meant. You feel oddly safe. Your next fight to the death will not be one."),
+    "eurydice": ("Eurydice, Almost", (
+        "I did not look. I swear I did not look",
+        "until the very last step that I took.",
+        "If you love someone, friend, walk on ahead,",
+        "and trust the footsteps. That is all I've said."),
+        "The room is quiet for a while. People look at you more kindly afterwards: Charm +{n}."),
+    "string": ("(He breaks a string.)", (
+        "Orpheus plays four notes, and the fifth goes TWANG.",),
+        "\"It happens,\" he says, sucking his finger. \"Come back tomorrow.\""),
+}
+
+ROOM_OFFER = "A room for the night is {price} drachmae. Upstairs, nobody can rob you."
+ROOM_TAKEN = "Nikandros takes {price} drachmae and hands you a key with a wooden fish on it."
+ROOM_REFUSED = "Nikandros looks at your purse, then at you, with sympathy but no key."
+WINE = "Nikandros pours. {price} drachmae; {healed} hit points of warmth go down with it."
+WINE_REFUSED = "\"On the house\" is not a phrase Nikandros knows."
+GOSSIP = (
+    "\"Bank before you climb,\" says Nikandros. \"The mountain keeps what it finds on you.\"",
+    "\"Doros talks rot,\" says Nikandros, \"but his armour is sound. Most lose at the gate for want of it.\"",
+    "\"Akeso is cheaper than dying,\" says Nikandros. \"Most people work that out second.\"",
+    "\"They say the garden needs the best bronze there is. They say it from the Palaestra sand, mostly.\"",
+    "\"Makaria's seeds,\" says Nikandros, lowering his voice. \"What they buy, you keep. Even after.\"",
+    "\"That fellow with the boulder? Help him if you see him. He's better company than he looks.\"",
+    "\"Orpheus sings once a day for anyone. Costs nothing. People forget to ask.\"",
+)
+
+WALL = "The wall by the door is soft plaster, and generations of climbers have scratched their thoughts into it."
+WALL_EMPTY = "Nobody has written anything lately. The plaster is smooth and inviting."
+WALL_WRITTEN = "You scratch it in with the point of your knife. It looks permanent. It is not."
+WALL_FULL = "Nikandros coughs. \"Five a day,\" he says. \"It's a wall, not a diary.\""
+WALL_REFUSED = "The plaster will not take that. (One line, up to 120 characters, and no links.)"
+
+# ---------------------------------------------------------------------------
+# The Herald
+# ---------------------------------------------------------------------------
+
+HERALD = (
+    "Stentor stands on his barrel, as he does every morning, telling the town what "
+    "it already knows at a volume it cannot ignore.",
+)
+HERALD_QUIET = "\"NOTHING HAS HAPPENED,\" bellows Stentor, \"AND I WILL KEEP YOU INFORMED.\""
+
+# {name} is a climber; {detail} depends on the kind of news. Variants rotate.
+NEWS = {
+    "kid": (
+        "{name} came down the mountain with somebody's lost goat on their shoulders. The goat is said to be unrepentant.",
+    ),
+    "arrival": (
+        "{name} has come to Ephyra with an olive branch and an expression of confidence.",
+        "A newcomer: {name}. Agathe has been told.",
+    ),
+    "level": (
+        "{name} got past {detail} and now stands in {band}.",
+        "{detail} has let {name} through. {band} will see what they are made of.",
+    ),
+    "death": (
+        "{name} was carried down from {band}, the work of {detail}. They will be fine by morning.",
+        "{detail} has sent {name} back to Akeso. She has the good thyme out.",
+    ),
+    "ascent": (
+        "{name} HAS COME DOWN WITH AN APPLE. That is ascent number {detail}. Ladon is said to be furious.",
+    ),
+}
+
+# One a day, by the calendar.
+DAILY = (
+    "A goat was found on the roof of the Vault. Kallias is counting it.",
+    "Brontes was heard to say a whole sentence. Witnesses disagree about what it was.",
+    "Rain on the Goat Tracks. Myrto advises sensible footwear, as she has for thirty years.",
+    "Doros is giving a talk on swordsmanship tonight. Attendance is expected to be Doros.",
+    "Orpheus has new strings. He would like everyone to stop mentioning the old ones.",
+    "Snow reported above the Eagle Crags, which is where snow is kept.",
+    "Akeso reminds climbers that \"walking it off\" is not a treatment.",
+    "Someone has carved \"LADON IS A LIZARD\" on the Stele. Someone is advised to be careful.",
+    "The goat that belongs to nobody has been seen following a tax collector. Hopes are high.",
+    "Makaria sold no seeds today, or yesterday, or ever. She gives them and takes them. It is different.",
+    "Clear skies. From the Agora you can see almost to the Cloud Line, which is as far as most want to.",
+    "Nikandros has watered the wine. Nikandros denies watering the wine. The wine has no comment.",
+)
+
+# ---------------------------------------------------------------------------
+# The Slopes: events
+# ---------------------------------------------------------------------------
+
+# What you see when an event asks you to choose.
+EVENT_INTRO = {
+    "boulder": (
+        "The path is blocked by a boulder the size of a small house. Leaning against "
+        "it, getting his breath, is a man with enormous shoulders and an unexpectedly "
+        "cheerful face.",
+        "\"Nearly there,\" he says. He says it the way other people say good morning. "
+        "\"I could use a hand, if you have one.\"",
+    ),
+    "wall": (
+        "An old orchard wall runs along the path. Over it, just within reach, hangs a "
+        "single pomegranate, split and glittering.",
+        "It is not your pomegranate.",
+    ),
+    "satyr": (
+        "A satyr is sitting on a wineskin the size of a goat. \"Drinking contest,\" he "
+        "says, without preamble. \"Name your stake. I never lose.\" He hiccups.",
+    ),
+    "kid": (
+        "A goat kid is standing on a rock, bleating at the sky. It is wearing a bell. "
+        "Somebody, down in Ephyra, is missing it.",
+    ),
+    "shrine": (
+        "Where two paths cross there is a heap of stones with a weathered head on top: "
+        "a shrine to Hermes, who looks after travellers, and also thieves.",
+    ),
+    "hive": (
+        "A cleft in the rock is humming. Bees come and go. It smells of thyme honey, "
+        "and of a bad idea.",
+    ),
+    "toll": (
+        "A large person is sitting on a smaller rock in the middle of the path. "
+        "\"Toll,\" says the large person, holding out a hand like a shovel.",
+    ),
+}
+
+# Button labels for each option, with the hotkey in brackets.
+EVENT_OPTIONS = {
+    "boulder": {"help": ("h", "(H)elp him push"), "around": ("g", "(G)o around")},
+    "wall": {"take": ("t", "(T)ake it"), "leave": ("l", "(L)eave it")},
+    "satyr": {"wager": ("w", "(W)ager"), "decline": ("d", "(D)ecline")},
+    "kid": {"carry": ("c", "(C)arry it down to town"), "sell": ("s", "(S)ell it to a passing drover"), "leave": ("l", "(L)eave it")},
+    "shrine": {"offer": ("o", "Leave an (O)ffering"), "pass": ("p", "(P)ass by")},
+    "hive": {"reach": ("r", "(R)each in"), "leave": ("l", "(L)eave the bees alone")},
+    "toll": {"pay": ("p", "(P)ay the toll"), "fight": ("f", "(F)ight"), "back": ("b", "Turn (B)ack")},
+}
+
+# What came of it. {n} is whatever number the result carries.
+EVENT_RESULT = {
+    "spring": "A spring comes out of the rock here, so cold it aches. You drink until you are whole again: {n} hit points.",
+    "rockslide": "The slope above you lets go. You are fast, but not fast enough to keep all of yourself: {n} hit points lost.",
+    "eagle": "An eagle passes overhead and lets something fall. It is a purse, only slightly pecked: {n} drachmae.",
+    "oracle": "An old woman on the path looks through you. \"{n} XP,\" she says, \"and then the gate.\" She does not explain, and you find you do not need her to.",
+    "oracle_garden": "An old woman on the path looks through you. \"You have run out of mountain,\" she says. \"What is left is the garden, and your best bronze, and your nerve.\"",
+    "shade": "A figure sits where the path turns, grey as morning, practising something over and over. It is a climber who did not come back. Wordlessly they show you what they had almost learned. Your calling rank is now {n}.",
+    "smoke": "Smoke between the pines. You follow it to a fire with shepherds round it, who shift up to make room as if they had been expecting you. You will know the way to the Shepherds' Fire from now on.",
+    "boulder_help": "You put your shoulder to it. It is like pushing the world. It moves, a little; he laughs, delighted. It costs you {n} hit points and teaches you something about persistence. \"Same time tomorrow,\" he says.",
+    "boulder_lesson": "You push together for a long time ({n} hit points' worth). At the top of the rise he shows you how he sets his feet, a thing he has had for ever to get right. Your calling deepens by a rank. Behind you, the boulder begins, gently, to roll back down.",
+    "boulder_around": "You edge past. \"Another time,\" he says, without reproach, and sets his shoulder to the stone.",
+    "wall_take": "It comes away in your hand. One seed is perfect. You now have {n}.",
+    "wall_gardener": "It comes away in your hand, and so, from behind the wall, does a gardener with a pruning hook and a very firm view of property.",
+    "wall_leave": "You leave it. The orchard seems, in some way, to notice.",
+    "satyr_won": "You match him cup for cup until he slides gently off the wineskin. You are {n} drachmae richer and will regret nothing until morning.",
+    "satyr_lost": "He never loses. You wake under a bush, {n} drachmae poorer, with a view of the path from an unfamiliar angle.",
+    "satyr_decline": "\"Your loss,\" says the satyr, who then falls asleep mid-sentence.",
+    "kid_carry": "You carry it down on your shoulders, bell clanking. A small girl in the Agora bursts into tears of joy. People saw. Your Charm is now {n}.",
+    "kid_sell": "A drover gives you {n} drachmae for it and asks no questions. The bell goes on clanking for some time.",
+    "kid_leave": "You leave it bleating. It will probably be fine. Goats usually are.",
+    "shrine_pleased": "You lay your coins on the stones. A breeze gets up from nowhere and your pack feels lighter. You can climb {n} more times today.",
+    "shrine_silent": "You lay your coins on the stones. Nothing happens, which with Hermes is sometimes the best you can hope for.",
+    "shrine_pass": "You nod to the stone head and walk on. It does not nod back.",
+    "hive_honey": "You come away with a fistful of comb and, miraculously, no stings. It is the best thing you have ever eaten. Your maximum hit points rise by {n}, for good.",
+    "hive_stung": "The bees have views. {n} hit points later, you have none of the honey and a new respect for bees.",
+    "hive_leave": "You leave the bees to it. The humming sounds, if anything, smug.",
+    "toll_pay": "You count {n} drachmae into the enormous hand. The large person shifts, slightly, to one side.",
+    "toll_fight": "\"No,\" you say. The large person stands up, and keeps standing up for some time.",
+    "toll_back": "You turn round. There are other paths. Most of them are worse.",
+}
+
+SATYR_STAKE = "He will take any stake up to {most} drachmae."
+
+# ---------------------------------------------------------------------------
+# The Shepherds' Fire
+# ---------------------------------------------------------------------------
+
+FIRE = (
+    "The Shepherds' Fire. Nobody here asks your name, and everybody seems to know "
+    "it. There is a pot of something on the embers, and a game going on a flat rock.",
+    "An old shepherd watches you over the flames. \"Callings change,\" she says. "
+    "\"Half of what you know comes with you. The rest you leave at the fire.\"",
+)
+FIRE_GAMES = "Knucklebones: even money, up to {most} drachmae a throw, {left} more today."
+FIRE_NO_GAMES = "The knucklebones are put away; you have played enough for one day, or have nothing to play with."
+KNUCKLES_WON = "The bones fall your way. {n} drachmae slide across the rock to you."
+KNUCKLES_LOST = "The bones fall badly. {n} drachmae slide across the rock, away from you."
+KNUCKLES_REFUSED = "The shepherds look at your stake, then at each other. No."
+NEW_CALLING = "You sit a long while by the fire. When you stand, you follow {calling}, at rank {rank}, and something you used to know has gone quiet."

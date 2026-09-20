@@ -34,6 +34,7 @@ class Dice:
 
 
 NO_AMBUSH, AMBUSH = 0.0, 0.99          # vs FIRST_STRIKE_CHANCE
+NO_EVENT, AN_EVENT = 0.99, 0.0         # vs EVENT_CHANCE: the first roll of every "look for trouble"
 PLAIN, MIGHTY = 0.99, 0.0              # vs MIGHTY_BLOW_CHANCE
 ESCAPE, STUMBLE = 0.0, 0.99            # vs RUN_CHANCE
 

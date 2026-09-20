@@ -384,7 +384,7 @@ async def mille_play(
         safety = SAFETY_FOR[card[1]]
         if ("safety", safety) in game.cpu.hand:
             apply_coup_fourre(game.cpu, card[1])
-            game.messages.append(f"CPU plays Coup Fourre: {safety}!")
+            game.messages.append(f"CPU plays Coup Fourré: {safety}!")
 
     _check_game_over(game)
 
@@ -442,7 +442,7 @@ async def mille_coup(
     if accept == "yes":
         safety = SAFETY_FOR[hazard_name]
         apply_coup_fourre(game.human, hazard_name)
-        game.messages.append(f"You play Coup Fourre: {safety}!")
+        game.messages.append(f"You play Coup Fourré: {safety}!")
 
     _check_game_over(game)
 
@@ -631,7 +631,7 @@ async def mille_pvp_coup(
     if accept == "yes":
         safety = SAFETY_FOR[hazard_name]
         apply_coup_fourre(me, hazard_name)
-        pvp.messages.append(f"{me.name} plays Coup Fourre: {safety}!")
+        pvp.messages.append(f"{me.name} plays Coup Fourré: {safety}!")
 
     # Either way the hazard was the opponent's move, so the turn comes here:
     # accepting only changes whether the hazard sticks. (Passing it back on a

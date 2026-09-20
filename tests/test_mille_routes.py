@@ -207,7 +207,7 @@ async def test_cpu_answers_a_hazard_with_coup_fourre(alice):
     assert game.cpu.coups == 1 and game.cpu.safeties == ["Driving Ace"]
     assert game.messages[0] == "You play Accident on CPU!"
     assert game.cpu.hazard is None
-    assert "CPU plays Coup Fourre: Driving Ace!" in game.messages
+    assert "CPU plays Coup Fourré: Driving Ace!" in game.messages
     # Unharmed, it went on to drive the 100 it drew.
     assert game.cpu.miles == 100
 
@@ -251,6 +251,9 @@ async def test_accepting_coup_fourre(alice):
         assert game.human.coups == 1 and game.human.safeties == ["Driving Ace"]
         assert game.human.hazard is None and game.human.can_move
         assert game.human.hand == [D(100)]               # drew, and it is the human's turn
+        assert game.messages[-1] == "You play Coup Fourré: Driving Ace!"
+        # Spelled the same in the message as in the page's own headings.
+        assert "You play Coup Fourré: Driving Ace!" in (await client.get(PAGE)).text
         assert game.cpu.hand == [D(50)]                  # CPU did not get another move
         assert state_of((await client.get(PAGE)).text) == "active"
 

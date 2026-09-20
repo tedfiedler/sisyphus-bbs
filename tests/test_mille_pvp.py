@@ -284,7 +284,7 @@ async def test_accepting_coup_fourre_takes_the_turn(players):
     assert game.player2.hazard is None and game.player2.can_move
     assert game.current_turn == bob["id"]
     assert game.player2.hand == [D(50), D(100)]
-    assert "bob plays Coup Fourre: Driving Ace!" in game.messages
+    assert "bob plays Coup Fourré: Driving Ace!" in game.messages
 
 
 @pytest.mark.asyncio

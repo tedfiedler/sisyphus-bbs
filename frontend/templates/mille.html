@@ -224,7 +224,7 @@
 
 
 {% elif state == "coup_fourre" %}
-{# ── CPU Coup Fourre Decision ── #}
+{# ── CPU Coup Fourré Decision ── #}
 {{ player_status_table(game.human, "You", game.cpu, "CPU", game.deck|length) }}
 {{ message_box(game.messages) }}
 
@@ -316,7 +316,7 @@
 
 
 {% elif state == "pvp_coup_fourre" %}
-{# ── PvP: Coup Fourre Decision ── #}
+{# ── PvP: Coup Fourré Decision ── #}
 {{ player_status_table(me, "You", opp, opp.name, game.deck|length) }}
 {{ message_box(game.messages) }}
 

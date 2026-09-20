@@ -172,7 +172,7 @@ def test_unknown_card_type_is_never_playable():
 
 def test_distance_adds_miles_and_counts_200s():
     me = player(rolling=True, miles=100)
-    assert do_play(D(200), me, player("Opp")) == "drives 200 mi! (300 total)"
+    assert do_play(D(200), me, player("Opp")) == "P drives 200 mi! (300 total)"
     assert (me.miles, me.count_200) == (300, 1)
     do_play(D(75), me, player("Opp"))
     assert (me.miles, me.count_200) == (375, 1)
@@ -189,7 +189,7 @@ def test_roll_and_end_of_limit():
 @pytest.mark.parametrize("hazard, remedy", [(ACCIDENT, REPAIRS), (OUT_OF_GAS, GASOLINE), (FLAT, SPARE)])
 def test_breakdown_then_remedy_then_roll(hazard, remedy):
     attacker, victim = player("A"), player("V", rolling=True)
-    assert do_play(hazard, attacker, victim) == f"plays {hazard[1]} on V!"
+    assert do_play(hazard, attacker, victim) == f"A plays {hazard[1]} on V!"
     assert victim.hazard == hazard[1] and not victim.rolling and not victim.can_move
 
     do_play(remedy, victim, attacker)
@@ -217,7 +217,7 @@ def test_stop_and_speed_limit():
 @pytest.mark.parametrize("safety, hazard", [(ACE, "Accident"), (TANK, "Out of Gas"), (PUNCTURE, "Flat Tire")])
 def test_safety_clears_its_own_hazard_only(safety, hazard):
     me = player(hazard=hazard)
-    assert do_play(safety, me, player("Opp")) == f"plays {safety[1]}!"
+    assert do_play(safety, me, player("Opp")) == f"P plays {safety[1]}!"
     assert me.hazard is None and safety[1] in me.safeties
 
     other = "Flat Tire" if hazard != "Flat Tire" else "Accident"
@@ -230,6 +230,35 @@ def test_right_of_way_starts_the_car_and_lifts_the_limit():
     me = player(speed_limited=True)
     do_play(RIGHT_OF_WAY, me, player("Opp"))
     assert me.rolling and not me.speed_limited and me.can_move
+
+
+def test_messages_address_the_human_player_in_the_second_person():
+    """ "You play", never "You plays"; and the CPU does things "on you", not "on You"."""
+    you = player("You", second_person=True, rolling=True)
+    cpu = player("CPU", rolling=True)
+
+    assert do_play(ROLL, player("You", second_person=True), cpu) == "You play Roll and start moving!"
+    assert do_play(D(100), you, cpu) == "You drive 100 mi! (100 total)"
+    assert do_play(ACE, you, cpu) == "You play Driving Ace!"
+    assert do_play(ACCIDENT, you, cpu) == "You play Accident on CPU!"
+    assert do_play(STOP, cpu, you) == "CPU plays Stop on you!"
+
+    you.hazard, you.speed_limited = "Flat Tire", True
+    assert do_play(SPARE, you, cpu) == "You play Spare Tire - hazard cleared!"
+    assert do_play(END_OF_LIMIT, you, cpu) == "You play End of Limit!"
+
+
+def test_named_players_are_described_in_the_third_person():
+    alice, bob = player("alice"), player("bob", rolling=True)
+    assert do_play(ROLL, alice, bob) == "alice plays Roll and starts moving!"
+    assert do_play(D(25), alice, bob) == "alice drives 25 mi! (25 total)"
+    assert do_play(ACCIDENT, alice, bob) == "alice plays Accident on bob!"
+
+
+def test_a_user_who_is_literally_named_you_is_still_third_person_in_pvp():
+    game = mille.new_pvp_game(1, "You", 2, "bob")
+    assert do_play(ROLL, game.player1, game.player2) == "You plays Roll and starts moving!"
+    assert mille.new_game(3).human.second_person is True
 
 
 # ---------------------------------------------------------------------------

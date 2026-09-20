@@ -125,7 +125,7 @@ async def test_play_runs_cpu_turn_then_draws(alice):
     assert game.human.hand == [D(100), GASOLINE]
     assert game.cpu.rolling and game.cpu.hand == [D(25)]
     assert game.deck == [D(50)]
-    assert game.messages == ["You plays Roll and starts moving!", "CPU plays Roll and starts moving!"]
+    assert game.messages == ["You play Roll and start moving!", "CPU plays Roll and starts moving!"]
 
 
 @pytest.mark.asyncio
@@ -205,6 +205,7 @@ async def test_cpu_answers_a_hazard_with_coup_fourre(alice):
         await client.post(f"{PAGE}/play", data={"card_index": 0})
 
     assert game.cpu.coups == 1 and game.cpu.safeties == ["Driving Ace"]
+    assert game.messages[0] == "You play Accident on CPU!"
     assert game.cpu.hazard is None
     assert "CPU plays Coup Fourre: Driving Ace!" in game.messages
     # Unharmed, it went on to drive the 100 it drew.
@@ -230,6 +231,7 @@ async def test_human_is_offered_coup_fourre_and_play_is_paused(alice):
 
         assert game.coup_fourre_pending == "Accident"
         assert game.human.hazard == "Accident"
+        assert game.messages[-1] == "CPU plays Accident on you!"
         assert game.human.hand == [ACE]                  # no draw while the question is open
         html = (await client.get(PAGE)).text
         assert state_of(html) == "coup_fourre" and "Driving Ace" in html
@@ -293,8 +295,9 @@ async def test_reaching_1000_wins_immediately_and_is_scored_once(alice):
 
         html = (await client.get(PAGE)).text
         assert state_of(html) == "game_over"
-        for line in ("Trip complete", "Safe trip", "Shutout", "You wins!"):
+        for line in ("Trip complete", "Safe trip", "Shutout", "You win!"):
             assert line in html
+        assert "You wins!" not in html
         expected = 1000 + 400 + 300 + 500
         assert await _scores(alice["id"]) == [{"score": expected, "opponent": "CPU", "won": 1, "game": "mille"}]
 

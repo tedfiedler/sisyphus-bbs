@@ -426,7 +426,8 @@ async def test_player_two_wins_by_reaching_1000(players):
         await b.post(f"{PAGE}/pvp/play", data={"card_index": 0})
         html = (await b.get(PAGE)).text
     # On his own result page bob is "You".
-    assert game.winner == "bob" and "You wins!" in html and "Trip complete" in html
+    assert game.winner == "bob" and "You win!" in html and "Trip complete" in html
+    assert "You wins!" not in html
 
 
 @pytest.mark.asyncio

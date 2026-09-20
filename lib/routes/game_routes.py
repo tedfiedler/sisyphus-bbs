@@ -93,8 +93,7 @@ def _run_cpu_turn(game):
 
     if action == "play":
         game.cpu.hand.pop(idx)
-        msg = do_play(card, game.cpu, game.human)
-        game.messages.append(f"CPU {msg}")
+        game.messages.append(do_play(card, game.cpu, game.human))
 
         if card[0] == "hazard":
             safety = SAFETY_FOR[card[1]]
@@ -118,8 +117,7 @@ def _auto_advance_cpu(game):
         card = game.cpu.hand[idx]
         if action == "play":
             game.cpu.hand.pop(idx)
-            msg = do_play(card, game.cpu, game.human)
-            game.messages.append(f"CPU {msg}")
+            game.messages.append(do_play(card, game.cpu, game.human))
         else:
             game.cpu.hand.pop(idx)
             game.messages.append("CPU discards a card.")
@@ -380,8 +378,7 @@ async def mille_play(
         return RedirectResponse("/games/mille", status_code=302)
 
     game.human.hand.pop(card_index)
-    msg = do_play(card, game.human, game.cpu)
-    game.messages = [f"You {msg}"]
+    game.messages = [do_play(card, game.human, game.cpu)]
 
     if card[0] == "hazard":
         safety = SAFETY_FOR[card[1]]
@@ -568,8 +565,7 @@ async def mille_pvp_play(
         return RedirectResponse("/games/mille", status_code=302)
 
     me.hand.pop(card_index)
-    msg = do_play(card, me, opp)
-    pvp.messages = [f"{me.name} {msg}"]
+    pvp.messages = [do_play(card, me, opp)]
 
     _check_pvp_game_over(pvp)
 

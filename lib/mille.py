@@ -29,9 +29,16 @@ SAFETY_FOR = {
 class Player:
     """Represent a Mille Bornes player with hand, miles, status effects, and safeties."""
 
-    def __init__(self, name):
-        """Initialize a player with an empty hand and default state."""
+    def __init__(self, name, second_person=False):
+        """Initialize a player with an empty hand and default state.
+
+        *second_person* marks the player the messages are addressed to (the
+        human in a CPU game, shown as "You"). It is a flag rather than a
+        check on the name because in PvP the name is a username, and
+        somebody can register as "You".
+        """
         self.name = name
+        self.second_person = second_person
         self.hand = []
         self.miles = 0
         self.rolling = False
@@ -40,6 +47,15 @@ class Player:
         self.safeties = []
         self.coups = 0
         self.count_200 = 0
+
+    def verb(self, base):
+        """Conjugate *base* for this player: "You play", "CPU plays"."""
+        return base if self.second_person else f"{base}s"
+
+    @property
+    def as_object(self):
+        """How a sentence refers to this player as its target: "on you", "on CPU"."""
+        return "you" if self.second_person else self.name
 
     @property
     def can_move(self):
@@ -123,8 +139,9 @@ def can_play(card, player, opponent):
 
 
 def do_play(card, player, opponent):
-    """Execute a card play. Returns a plain-text description string."""
+    """Execute a card play. Returns a complete sentence describing it."""
     ctype, value = card
+    plays = f"{player.name} {player.verb('play')} {card_name(card)}"
 
     if ctype == "safety":
         player.safeties.append(value)
@@ -137,24 +154,24 @@ def do_play(card, player, opponent):
             player.hazard = None
         elif value == "Puncture-Proof" and player.hazard == "Flat Tire":
             player.hazard = None
-        return f"plays {card_name(card)}!"
+        return f"{plays}!"
 
     if ctype == "distance":
         player.miles += value
         if value == 200:
             player.count_200 += 1
-        return f"drives {card_name(card)}! ({player.miles} total)"
+        return f"{player.name} {player.verb('drive')} {card_name(card)}! ({player.miles} total)"
 
     if ctype == "remedy":
         if value == "Roll":
             player.rolling = True
-            return f"plays {card_name(card)} and starts moving!"
+            return f"{plays} and {player.verb('start')} moving!"
         if value == "End of Limit":
             player.speed_limited = False
-            return f"plays {card_name(card)}!"
+            return f"{plays}!"
         player.hazard = None
         player.rolling = False
-        return f"plays {card_name(card)} - hazard cleared!"
+        return f"{plays} - hazard cleared!"
 
     if ctype == "hazard":
         if value == "Speed Limit":
@@ -164,7 +181,7 @@ def do_play(card, player, opponent):
         else:
             opponent.hazard = value
             opponent.rolling = False
-        return f"plays {card_name(card)} on {opponent.name}!"
+        return f"{plays} on {opponent.as_object}!"
 
     return ""
 
@@ -290,7 +307,7 @@ _games: dict[int, GameState] = {}  # keyed by user_id
 def new_game(user_id: int) -> GameState:
     """Create a new game for a user. Deals 7 to human (pre-draw), 6 to CPU."""
     deck = build_deck()
-    human = Player("You")
+    human = Player("You", second_person=True)
     cpu = Player("CPU")
     for _ in range(6):
         human.hand.append(deck.pop())

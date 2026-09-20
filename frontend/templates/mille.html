@@ -109,7 +109,7 @@
 
     <p class="mt-12 text-16">
         {% if p1_score > p2_score %}
-        <strong class="text-fg">{{ p1_name }} wins!</strong>
+        <strong class="text-fg">{% if p1_name == "You" %}You win!{% else %}{{ p1_name }} wins!{% endif %}</strong>
         {% elif p2_score > p1_score %}
         <strong class="text-warn">{{ p2_name }} wins!</strong>
         {% else %}

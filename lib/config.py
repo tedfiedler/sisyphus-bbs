@@ -18,6 +18,9 @@ Environment variables:
                            sets X-Forwarded-For and X-Forwarded-Proto, so rate
                            limiting sees the real client address and cookies
                            are marked Secure when the proxy terminates TLS.
+    SISYPHUS_TZ            IANA time zone (e.g. America/Chicago) that decides
+                           when a game day turns over. Default: the server's
+                           local time.
     SISYPHUS_ALLOWED_ORIGINS
                            Comma-separated extra origins (scheme://host[:port])
                            allowed to open the chat WebSocket. Only needed
@@ -47,6 +50,8 @@ ALLOWED_ORIGINS = frozenset(
     for origin in os.getenv("SISYPHUS_ALLOWED_ORIGINS", "").split(",")
     if origin.strip()
 )
+
+TZ = os.getenv("SISYPHUS_TZ", "").strip() or None
 
 TEMPLATES_DIR = BASE_DIR / "frontend" / "templates"
 STATIC_DIR = BASE_DIR / "frontend" / "static"

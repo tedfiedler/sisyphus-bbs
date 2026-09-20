@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ game_title }}{% endblock %}
+{% block content %}
+<div class="box climb">
+    <h2>{{ game_title }} <span class="meta">{{ screen.heading }}</span></h2>
+
+    {% if status %}
+    <div class="climb-status">
+        <span><span class="c-dim">HP</span> <span class="{% if status.hp * 3 < status.max_hp %}c-blood{% else %}c-leaf{% endif %}">{{ status.hp }}</span>/{{ status.max_hp }}</span>
+        <span><span class="c-dim">Drachmae</span> <span class="c-gold">{{ status.purse }}</span> <span class="c-dim">(Vault {{ status.vault }})</span></span>
+        <span><span class="c-dim">Climbs left</span> {{ status.fights_left }}</span>
+        <span><span class="c-dim">Level</span> {{ status.level }}{% if status.xp_needed %} <span class="c-dim">XP</span> {{ status.xp }}/{{ status.xp_needed }}{% endif %}</span>
+    </div>
+    {% endif %}
+
+    {% if notice %}
+    <div class="climb-notice">
+        {% for line in notice %}<p>{{ line }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="climb-scene">
+        {% for line in screen.lines %}<p>{{ line }}</p>{% endfor %}
+    </div>
+
+    {% if screen.choices %}
+    <div class="climb-choices">
+        {% for choice in screen.choices %}
+        <form method="post" action="/games/climb/act" class="climb-choice">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="turn" value="{{ turn }}">
+            <input type="hidden" name="action" value="{{ choice.action }}">
+            {% if choice.amount %}
+            <input type="number" name="amount" min="1" max="{{ choice.most }}" required class="climb-amount" aria-label="{{ choice.label }}" data-key="{{ choice.key }}">
+            {% endif %}
+            <button type="submit" {% if not choice.amount %}data-key="{{ choice.key }}"{% endif %}>{{ choice.label }}</button>
+        </form>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if status %}
+    <div class="climb-sheet meta">
+        {{ status.title }} of {{ status.calling }} &middot; {{ status.band }} &middot;
+        {{ status.weapon }}, {{ status.armour }}{% if status.seeds %} &middot; {{ status.seeds }} seed{{ "s" if status.seeds != 1 }}{% endif %}
+    </div>
+    {% endif %}
+</div>
+<p class="meta center">{{ credit }}</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/climb.js?v={{ static_version }}" defer></script>
+{% endblock %}

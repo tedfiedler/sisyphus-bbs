@@ -30,6 +30,7 @@ router = APIRouter()
 
 GAMES = [
     {"name": "Mille Bornes", "url": "/games/mille", "description": "Race to 1000 miles with cards — play distance, dodge hazards, and use safeties!"},
+    {"name": "The Long Climb", "url": "/games/climb", "description": "A few fights a day up a mountain with a dragon on top. Reach the garden, take an apple, and start again."},
 ]
 
 

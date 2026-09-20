@@ -361,3 +361,39 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
     padding-left: 8px;
     margin: 4px 0;
 }
+
+/* ------------------------------------------------------------------------
+   The Long Climb
+   ------------------------------------------------------------------------ */
+.c-gold { color: #e6c34a; }
+.c-blood { color: #ff4d4d; }
+.c-leaf { color: var(--fg); }
+.c-sky { color: var(--accent); }
+.c-dim { color: var(--dim); }
+
+.climb-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 22px;
+    padding: 6px 10px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+}
+.climb-notice {
+    border-left: 3px solid var(--accent);
+    padding: 2px 0 2px 10px;
+    margin-bottom: 12px;
+    color: #cfe9ff;
+}
+.climb-scene p, .climb-notice p { margin-bottom: 6px; max-width: 70ch; }
+.climb-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+.climb-choice { display: flex; gap: 4px; }
+.climb-choice button { padding: 10px 14px; text-transform: none; }
+.climb-amount { width: 9ch; margin-bottom: 0; }
+.climb-sheet { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--border); }

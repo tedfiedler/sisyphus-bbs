@@ -562,7 +562,7 @@ are the argument for having one:
 | Step | Deliverable | Done when |
 |---|---|---|
 | 1 ✅ | `data.py`, `rules.py`, and the simulator driving them | **Done 2026-09-20.** Every rule has a test with scripted dice (`tests/test_climb_rules.py`); the balance tests pass (`tests/test_climb_balance.py`). |
-| 2 | Schema, `store.py`, dawn, scenes, the Agora, the Slopes, combat, death, Hygieia, the Vault | A character can be created and can fight, die, heal, bank, and wake tomorrow — through the routes, under test. |
+| 2 ✅ | Schema, `store.py`, dawn, scenes, the Agora, the Slopes, combat, death, Hygieia, the Vault | **Done 2026-09-20.** A character can be created and can fight, die, heal, bank, and wake tomorrow — through the routes, under test (`tests/test_climb_routes.py`), and by keyboard alone in a real browser under the CSP. |
 | 3 | Forge, Aegis Row, Palaestra and gatekeepers, the Orchard Gate | Level 1 → 12 is playable. |
 | 4 | Ladon, ascent and reset, titles, the Stele, `game_scores` | The whole loop closes. |
 | 5 | The Lethe House: Orpheus, the wall, rooms, Nikandros; the Herald; events | The town feels inhabited with one player. |

@@ -88,6 +88,14 @@ async def test_rendered_pages_have_nothing_inline():
             if found := _violations(resp.text):
                 problems[page] = found
 
+        # The Long Climb: the welcome screen, then a screen with a character on it.
+        for label in ("welcome", "agora"):
+            resp = await client.get("/games/climb")
+            assert resp.status_code == 200
+            if found := _violations(resp.text):
+                problems[f"/games/climb ({label})"] = found
+            await client.post("/games/climb/act", data={"action": "begin:torch", "turn": 0})
+
         # Mille Bornes renders very different markup once a game is running.
         await client.post("/games/mille/new")
         resp = await client.get("/games/mille")

@@ -483,3 +483,18 @@ def test_the_vault():
         with pytest.raises(ValueError):
             rules.apply_withdrawal(c, bad)
     assert (c.purse, c.vault) == (50, 50)
+
+
+def test_every_event_the_rules_can_report_has_words():
+    """A missing line is a crash on the page, and only on the unlucky roll that reports it."""
+    import inspect
+    import re
+
+    from lib.climb import text
+
+    reported = set(re.findall(r'events\.append\(\("([a-z_]+)"', inspect.getsource(rules)))
+    reported |= set(re.findall(r'event: str = "([a-z_]+)"', inspect.getsource(rules)))
+    reported |= {"fury", "flame", "quick_hands"}              # passed to _you_strike by name
+    assert reported and reported <= set(text.EVENTS), reported - set(text.EVENTS)
+    for line in text.EVENTS.values():
+        line.format(foe="Goat", n=3)                         # no stray placeholders

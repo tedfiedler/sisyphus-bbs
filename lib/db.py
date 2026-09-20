@@ -115,6 +115,21 @@ CREATE TABLE IF NOT EXISTS dm_channel_seen (
     UNIQUE(user_id, channel)
 );
 
+-- The Long Climb. A climber's attributes and any fight in progress are JSON
+-- (lib/climb/store.py); `turn` rises with every action and is what makes a
+-- stale or repeated form submission a no-op.
+CREATE TABLE IF NOT EXISTS climb_players (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    turn INTEGER NOT NULL DEFAULT 0,
+    climber TEXT NOT NULL,
+    scene TEXT NOT NULL DEFAULT 'agora',
+    fight TEXT,
+    notice TEXT NOT NULL DEFAULT '[]',
+    last_day TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for the lookups the app makes on every page: thread and board
 -- listings, like counts, channel history, and session expiry sweeps.
 CREATE INDEX IF NOT EXISTS idx_posts_thread ON posts(thread_id);

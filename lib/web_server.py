@@ -101,7 +101,7 @@ app.add_middleware(
 
 
 
-from lib.routes import auth_routes, board_routes, file_routes, chat_routes, admin_routes, game_routes  # noqa: E402
+from lib.routes import auth_routes, board_routes, file_routes, chat_routes, admin_routes, game_routes, climb_routes  # noqa: E402
 
 app.include_router(auth_routes.router)
 app.include_router(board_routes.router)
@@ -109,3 +109,4 @@ app.include_router(file_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(game_routes.router)
+app.include_router(climb_routes.router)

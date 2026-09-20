@@ -13,3 +13,4 @@ certs/
 .env
 .venv/
 .idea/
+backup/

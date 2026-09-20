@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Chat{% endblock %}
 {% block content %}
-<div id="chat-layout">
+<div id="chat-layout" data-channel="{{ current_channel }}" data-admin="{{ 'true' if user.access_level >= 1 else 'false' }}" data-csrf="{{ csrf_token }}">
     <div id="chat-sidebar">
         <h3>Channels</h3>
-        <div class="channel-item{% if current_channel == 'lobby' %} active{% endif %}" onclick="switchChannel('lobby')"># lobby</div>
+        <div class="channel-item{% if current_channel == 'lobby' %} active{% endif %}" data-channel="lobby" data-switch># lobby</div>
         {% for ch in channels %}
-        <div class="channel-item{% if current_channel == ch.name %} active{% endif %}">
-            <span onclick="switchChannel('{{ ch.name }}')"># {{ ch.name }}</span>
+        <div class="channel-item{% if current_channel == ch.name %} active{% endif %}" data-channel="{{ ch.name }}">
+            <span data-switch># {{ ch.name }}</span>
             {% if user.access_level >= 1 %}
-            <form method="post" action="/chat/channels/{{ ch.name }}/delete" style="display:inline; float:right;">
+            <form class="inline-form float-right" method="post" action="/chat/channels/{{ ch.name }}/delete">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="btn-danger btn-small">x</button>
             </form>
@@ -19,24 +19,24 @@
         {% if user.access_level >= 1 %}
         <form method="post" action="/chat/channels/create" id="create-channel-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="text" name="name" placeholder="new-channel" style="font-size:12px; padding:4px; margin-top:5px;">
+            <input class="input-compact mt-5" type="text" name="name" placeholder="new-channel">
             <input type="hidden" name="description" value="">
-            <button type="submit" class="btn-small" style="margin-top:2px;">+ Channel</button>
+            <button type="submit" class="btn-small mt-2">+ Channel</button>
         </form>
         {% endif %}
 
         <h3>Direct Messages</h3>
         {% for dm in dm_channels %}
-        <div class="channel-item{% if current_channel == dm.channel %} active{% endif %}" onclick="switchChannel('{{ dm.channel }}')" data-channel="{{ dm.channel }}" {% if dm.channel in unread_dm_channels %}style="color: red;"{% endif %}>@ {{ dm.other_user.username }}</div>
+        <div class="channel-item{% if current_channel == dm.channel %} active{% endif %}{% if dm.channel in unread_dm_channels %} unread{% endif %}" data-channel="{{ dm.channel }}" data-switch>@ {{ dm.other_user.username }}</div>
         {% endfor %}
         {% if not dm_channels %}
-        <div class="meta" style="padding:4px 8px;">No conversations yet</div>
+        <div class="meta pad-item">No conversations yet</div>
         {% endif %}
 
         <h3>Online Users</h3>
         {% for ou in online_users %}
         {% if ou.id != user.id %}
-        <div class="user-item" onclick="startDM({{ ou.id }})">{{ ou.username }}</div>
+        <div class="user-item" data-dm-user="{{ ou.id }}">{{ ou.username }}</div>
         {% endif %}
         {% endfor %}
 
@@ -44,8 +44,8 @@
         <h3>Announce</h3>
         <form method="post" action="/chat/announce" id="announce-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="text" name="message" placeholder="Broadcast to all..." style="font-size:12px; padding:4px;">
-            <button type="submit" class="btn-small" style="margin-top:2px; background:var(--warn);">Send All</button>
+            <input class="input-compact" type="text" name="message" placeholder="Broadcast to all...">
+            <button type="submit" class="btn-small mt-2 btn-warn">Send All</button>
         </form>
         {% endif %}
     </div>
@@ -59,7 +59,7 @@
                     <span class="msg-user">&lt;{{ msg.username }}&gt;</span>
                     {{ msg.message }}
                     {% if user.access_level >= 1 %}
-                    <form method="post" action="/admin/chat/{{ msg.id }}/delete" style="display:inline; margin-left: 5px;">
+                    <form class="inline-form ml-5" method="post" action="/admin/chat/{{ msg.id }}/delete">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn-danger btn-small">Del</button>
                     </form>
@@ -69,7 +69,7 @@
             </div>
             <div id="chat-input">
                 <input type="text" id="msg-input" placeholder="Type a message..." autofocus>
-                <button onclick="sendMessage()">Send</button>
+                <button type="button" id="send-btn">Send</button>
             </div>
         </div>
     </div>
@@ -77,167 +77,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-const msgDiv = document.getElementById('chat-messages');
-const msgInput = document.getElementById('msg-input');
-const chatHeading = document.getElementById('chat-heading');
-const isAdmin = {{ 'true' if user.access_level >= 1 else 'false' }};
-const csrfToken = '{{ csrf_token }}';
-let currentChannel = {{ current_channel|tojson }};
-let ws = null;
-let connected = false;
-let reconnectDelay = 1000;
-const MAX_RECONNECT_DELAY = 30000;
-
-function connect() {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${proto}//${location.host}/ws/chat`);
-
-    ws.onopen = () => {
-        connected = true;
-        reconnectDelay = 1000;
-        if (currentChannel !== 'lobby') {
-            ws.send(JSON.stringify({ type: 'switch', channel: currentChannel }));
-        }
-    };
-
-    ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        if (data.type === 'ping') {
-            ws.send(JSON.stringify({ type: 'pong' }));
-            return;
-        }
-        if (data.type === 'history') {
-            msgDiv.innerHTML = '';
-            for (const msg of data.messages) {
-                appendMessage(msg);
-            }
-            return;
-        }
-        if (data.type === 'error') {
-            appendSystem(data.message || 'Error');
-            return;
-        }
-        if (data.type === 'announcement') {
-            appendAnnouncement(data);
-            return;
-        }
-        appendMessage(data);
-    };
-
-    ws.onclose = (e) => {
-        connected = false;
-        if (e.code === 4001) {
-            // Session ended (logout, expiry); reconnecting would only loop.
-            location.href = '/';
-            return;
-        }
-        appendSystem('Disconnected. Reconnecting...');
-        scheduleReconnect();
-    };
-
-    ws.onerror = () => {
-        ws.close();
-    };
-}
-
-function scheduleReconnect() {
-    setTimeout(() => {
-        connect();
-        reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
-    }, reconnectDelay);
-}
-
-function appendMessage(data) {
-    const div = document.createElement('div');
-    if (data.id) div.dataset.msgId = data.id;
-    const time = data.timestamp ? data.timestamp.substring(11, 19) : '';
-    let delBtn = '';
-    if (isAdmin && data.id) {
-        delBtn = ` <form method="post" action="/admin/chat/${Number(data.id)}/delete" style="display:inline; margin-left: 5px;">`
-            + `<input type="hidden" name="csrf_token" value="${csrfToken}">`
-            + `<button type="submit" class="btn-danger btn-small">Del</button></form>`;
-    }
-    div.innerHTML = `<span class="msg-time">[${escapeHtml(time || data.created_at || '')}]</span> <span class="msg-user">&lt;${escapeHtml(data.username)}&gt;</span> ${escapeHtml(data.message)}${delBtn}`;
-    msgDiv.appendChild(div);
-    msgDiv.scrollTop = msgDiv.scrollHeight;
-}
-
-function appendAnnouncement(data) {
-    const div = document.createElement('div');
-    div.style.color = 'var(--warn)';
-    div.style.borderLeft = '3px solid var(--warn)';
-    div.style.paddingLeft = '8px';
-    div.style.margin = '4px 0';
-    const time = data.timestamp ? data.timestamp.substring(11, 19) : '';
-    div.innerHTML = `<span class="msg-time">[${escapeHtml(time)}]</span> <strong>[ANNOUNCE]</strong> &lt;${escapeHtml(data.username)}&gt; ${escapeHtml(data.message)}`;
-    msgDiv.appendChild(div);
-    msgDiv.scrollTop = msgDiv.scrollHeight;
-}
-
-function appendSystem(text) {
-    const div = document.createElement('div');
-    div.style.color = 'var(--warn)';
-    div.textContent = '*** ' + text;
-    msgDiv.appendChild(div);
-    msgDiv.scrollTop = msgDiv.scrollHeight;
-}
-
-function sendMessage() {
-    const text = msgInput.value.trim();
-    if (!text || !connected) return;
-    ws.send(JSON.stringify({ message: text }));
-    msgInput.value = '';
-}
-
-function switchChannel(name) {
-    if (name === currentChannel) return;
-    currentChannel = name;
-    chatHeading.textContent = 'Chat - #' + name;
-    // Update active sidebar item
-    document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-    // Find matching sidebar entry (by channel name in onclick or text)
-    document.querySelectorAll('.channel-item').forEach(el => {
-        const onclick = el.getAttribute('onclick') || '';
-        const spanOnclick = el.querySelector('span') ? (el.querySelector('span').getAttribute('onclick') || '') : '';
-        if (onclick.includes("'" + name + "'") || spanOnclick.includes("'" + name + "'")) {
-            el.classList.add('active');
-        }
-    });
-    // Clear unread highlight when opening a DM channel
-    if (name.startsWith('dm:')) {
-        document.querySelectorAll('.channel-item[data-channel="' + name + '"]').forEach(el => {
-            el.style.color = '';
-        });
-    }
-    if (connected) {
-        ws.send(JSON.stringify({ type: 'switch', channel: name }));
-    }
-}
-
-function startDM(userId) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/chat/dm/' + Number(userId);
-    const token = document.createElement('input');
-    token.type = 'hidden';
-    token.name = 'csrf_token';
-    token.value = csrfToken;
-    form.appendChild(token);
-    document.body.appendChild(form);
-    form.submit();
-}
-
-msgInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendMessage();
-});
-
-function escapeHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}
-
-connect();
-</script>
+<script src="/static/js/chat.js?v={{ static_version }}" defer></script>
 {% endblock %}

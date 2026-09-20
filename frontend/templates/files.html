@@ -3,10 +3,10 @@
 {% block content %}
 <div class="box">
     <h2>File Areas</h2>
-    <div style="margin-bottom: 10px;">
+    <div class="mb-10">
         <a href="/files">All</a>
         {% for a in areas %}
-        | <a href="/files?area={{ a }}"{% if current_area == a %} style="color: var(--fg)"{% endif %}>{{ a }}</a>
+        | <a href="/files?area={{ a }}"{% if current_area == a %} class="text-fg"{% endif %}>{{ a }}</a>
         {% endfor %}
     </div>
 
@@ -32,9 +32,9 @@
             <td>
                 <a href="/files/download/{{ f.id }}">DL</a>
                 {% if user.access_level >= 1 %}
-                <form method="post" action="/admin/file/{{ f.id }}/delete" style="display:inline; margin-left: 5px;">
+                <form class="inline-form ml-5" method="post" action="/admin/file/{{ f.id }}/delete">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn-danger btn-small" onclick="return confirm('Delete this file?')">Del</button>
+                    <button type="submit" class="btn-danger btn-small" data-confirm="Delete this file?">Del</button>
                 </form>
                 {% endif %}
             </td>

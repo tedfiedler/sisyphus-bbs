@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ bbs_name }} - {% block title %}Welcome{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v={{ static_version }}">
+    <script src="/static/js/app.js?v={{ static_version }}" defer></script>
 </head>
 <body>
 <div class="container">
@@ -21,7 +22,7 @@
             {% if user.access_level >= 1 %}
             <a href="/admin">Admin</a>
             {% endif %}
-            <span class="meta">[ {% if has_unread_dm %}<span style="color: red;">*</span>{% endif %}<a href="/user/{{ user.id }}">{{ user.username }}</a>{% if user.access_level == 2 %} <span class="admin-badge">SUPER</span>{% elif user.access_level == 1 %} <span class="admin-badge">ADMIN</span>{% endif %} ]</span>
+            <span class="meta">[ {% if has_unread_dm %}<span class="text-alert">*</span>{% endif %}<a href="/user/{{ user.id }}">{{ user.username }}</a>{% if user.access_level == 2 %} <span class="admin-badge">SUPER</span>{% elif user.access_level == 1 %} <span class="admin-badge">ADMIN</span>{% endif %} ]</span>
             <form method="post" action="/logout" class="nav-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="link-button">Logout</button>

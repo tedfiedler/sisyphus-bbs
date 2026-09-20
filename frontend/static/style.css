@@ -297,3 +297,67 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
 .link-button:hover {
     color: var(--fg);
 }
+
+/* ------------------------------------------------------------------------
+   Utilities. The Content-Security-Policy forbids inline styles, so anything
+   a template used to say with style="..." is a class here. They come last
+   so they win over the component rules above at equal specificity.
+   ------------------------------------------------------------------------ */
+.hidden { display: none; }
+
+.text-fg { color: var(--fg); }
+.text-dim { color: var(--dim); }
+.text-accent { color: var(--accent); }
+.text-warn { color: var(--warn); }
+.text-alert { color: red; }
+.text-white { color: #fff; }
+.bold { font-weight: bold; }
+.italic { font-style: italic; }
+.center { text-align: center; }
+.text-85 { font-size: 0.85em; }
+.text-130 { font-size: 1.3em; }
+.text-16 { font-size: 16px; }
+
+.mt-0 { margin-top: 0; }
+.mt-2 { margin-top: 2px; }
+.mt-5 { margin-top: 5px; }
+.mt-8 { margin-top: 8px; }
+.mt-10 { margin-top: 10px; }
+.mt-12 { margin-top: 12px; }
+.mt-15 { margin-top: 15px; }
+.mt-2rem { margin-top: 2rem; }
+.mt-3rem { margin-top: 3rem; }
+.mb-10 { margin-bottom: 10px; }
+.ml-5 { margin-left: 5px; }
+.ml-10 { margin-left: 10px; }
+.float-right { float: right; }
+.pad-item { padding: 4px 8px; }
+
+.inline-form { display: inline; }
+.button-row { display: flex; gap: 8px; margin-top: 10px; }
+.input-compact { font-size: 12px; padding: 4px; }
+
+.box-accent { border-color: var(--accent); }
+.box-warn { border-color: var(--warn); }
+.box-alert { border-color: red; color: red; }
+.landing-box { max-width: 600px; margin: 2rem auto; text-align: left; }
+.row-total { border-top: 2px solid var(--accent); }
+
+/* :hover is listed too because `button:hover` outranks a lone class. */
+.btn-muted, .btn-muted:hover { background: var(--border); }
+.btn-muted { color: var(--fg); }
+.btn-muted.text-warn { color: var(--warn); }
+.btn-warn, .btn-warn:hover { background: var(--warn); }
+
+/* Unread DM stays red through hover and selection until it is opened. */
+.channel-item.unread,
+.channel-item.unread:hover,
+.channel-item.unread.active { color: red; }
+
+.chat-system { color: var(--warn); }
+.chat-announcement {
+    color: var(--warn);
+    border-left: 3px solid var(--warn);
+    padding-left: 8px;
+    margin: 4px 0;
+}

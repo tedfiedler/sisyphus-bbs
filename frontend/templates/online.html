@@ -18,10 +18,10 @@
         {% for u in all_users %}
         <tr>
             <td>
-                <a href="/user/{{ u.id }}" style="color: var({% if u.is_online %}--fg{% else %}--dim{% endif %});">{{ u.username }}</a>
+                <a href="/user/{{ u.id }}" class="{% if u.is_online %}text-fg{% else %}text-dim{% endif %}">{{ u.username }}</a>
                 {% if u.access_level == 2 %}<span class="admin-badge">SUPER</span>{% elif u.access_level == 1 %}<span class="admin-badge">ADMIN</span>{% endif %}
             </td>
-            <td style="color: var({% if u.is_online %}--fg{% else %}--dim{% endif %});">
+            <td class="{% if u.is_online %}text-fg{% else %}text-dim{% endif %}">
                 {% if u.is_online %}ONLINE{% else %}offline{% endif %}
             </td>
             <td class="meta">{{ u.created_at }}</td>

@@ -12,16 +12,16 @@
         <tr>
             <td>{{ p1_name }}</td>
             <td>{{ p1.miles }}</td>
-            <td>{% if p1.hazard %}<span style="color:var(--warn)">{{ p1.hazard }}</span>{% elif p1.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
-            <td>{% if p1.speed_limited and "Right of Way" not in p1.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
-            <td style="color:var(--accent)">{{ p1.safeties|join(", ") }}</td>
+            <td>{% if p1.hazard %}<span class="text-warn">{{ p1.hazard }}</span>{% elif p1.can_move %}<span class="text-fg">Rolling</span>{% else %}<span class="text-warn">Stopped</span>{% endif %}</td>
+            <td>{% if p1.speed_limited and "Right of Way" not in p1.safeties %}<span class="text-warn">Limited</span>{% else %}OK{% endif %}</td>
+            <td class="text-accent">{{ p1.safeties|join(", ") }}</td>
         </tr>
         <tr>
             <td>{{ p2_name }}</td>
             <td>{{ p2.miles }}</td>
-            <td>{% if p2.hazard %}<span style="color:var(--warn)">{{ p2.hazard }}</span>{% elif p2.can_move %}<span style="color:var(--fg)">Rolling</span>{% else %}<span style="color:var(--warn)">Stopped</span>{% endif %}</td>
-            <td>{% if p2.speed_limited and "Right of Way" not in p2.safeties %}<span style="color:var(--warn)">Limited</span>{% else %}OK{% endif %}</td>
-            <td style="color:var(--accent)">{{ p2.safeties|join(", ") }}</td>
+            <td>{% if p2.hazard %}<span class="text-warn">{{ p2.hazard }}</span>{% elif p2.can_move %}<span class="text-fg">Rolling</span>{% else %}<span class="text-warn">Stopped</span>{% endif %}</td>
+            <td>{% if p2.speed_limited and "Right of Way" not in p2.safeties %}<span class="text-warn">Limited</span>{% else %}OK{% endif %}</td>
+            <td class="text-accent">{{ p2.safeties|join(", ") }}</td>
         </tr>
     </table>
 </div>
@@ -47,15 +47,15 @@
         <tr>
             <td>{{ loop.index }}</td>
             <td>
-                {% if card[0] == "distance" %}<span style="color:#fff;font-weight:bold">{{ card[1] }} mi</span>
-                {% elif card[0] == "hazard" %}<span style="color:var(--warn)">{{ card[1] }}</span>
-                {% elif card[0] == "remedy" %}<span style="color:var(--fg)">{{ card[1] }}</span>
-                {% elif card[0] == "safety" %}<span style="color:var(--accent);font-weight:bold">{{ card[1] }}</span>
+                {% if card[0] == "distance" %}<span class="text-white bold">{{ card[1] }} mi</span>
+                {% elif card[0] == "hazard" %}<span class="text-warn">{{ card[1] }}</span>
+                {% elif card[0] == "remedy" %}<span class="text-fg">{{ card[1] }}</span>
+                {% elif card[0] == "safety" %}<span class="text-accent bold">{{ card[1] }}</span>
                 {% endif %}
             </td>
             <td>
                 {% if playable[loop.index0] %}
-                <form method="post" action="{{ play_action }}" style="display:inline">
+                <form class="inline-form" method="post" action="{{ play_action }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="card_index" value="{{ loop.index0 }}">
                     <button type="submit" class="btn-small">Play</button>
@@ -65,10 +65,10 @@
                 {% endif %}
             </td>
             <td>
-                <form method="post" action="{{ discard_action }}" style="display:inline">
+                <form class="inline-form" method="post" action="{{ discard_action }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="card_index" value="{{ loop.index0 }}">
-                    <button type="submit" class="btn-small" style="background:var(--border);color:var(--fg)">Discard</button>
+                    <button type="submit" class="btn-small btn-muted">Discard</button>
                 </form>
             </td>
         </tr>
@@ -104,16 +104,16 @@
         {% if p2.count_200 == 0 %}<tr><td>Safe trip</td><td>0</td><td>300</td></tr>{% endif %}
         {% if p1.miles == 0 %}<tr><td>Shutout</td><td>0</td><td>500</td></tr>{% endif %}
         {% endif %}
-        <tr style="border-top:2px solid var(--accent)"><td><strong>Total</strong></td><td><strong>{{ p1_score }}</strong></td><td><strong>{{ p2_score }}</strong></td></tr>
+        <tr class="row-total"><td><strong>Total</strong></td><td><strong>{{ p1_score }}</strong></td><td><strong>{{ p2_score }}</strong></td></tr>
     </table>
 
-    <p style="margin-top:12px;font-size:16px">
+    <p class="mt-12 text-16">
         {% if p1_score > p2_score %}
-        <strong style="color:var(--fg)">{{ p1_name }} wins!</strong>
+        <strong class="text-fg">{{ p1_name }} wins!</strong>
         {% elif p2_score > p1_score %}
-        <strong style="color:var(--warn)">{{ p2_name }} wins!</strong>
+        <strong class="text-warn">{{ p2_name }} wins!</strong>
         {% else %}
-        <strong style="color:var(--accent)">It's a tie!</strong>
+        <strong class="text-accent">It's a tie!</strong>
         {% endif %}
     </p>
 </div>
@@ -128,27 +128,27 @@
 {# ── Lobby ── #}
 <div class="box">
     <h2>Mille Bornes &mdash; Game Lobby</h2>
-    <p class="meta" style="margin-top:8px">
+    <p class="meta mt-8">
         Race to 1000 miles! Play distance cards to advance, hazards to slow your opponent, and safeties for protection.<br>
         You must play <strong>Roll</strong> before you can drive. Max two <strong>200 mi</strong> cards per game.
     </p>
-    <form method="post" action="/games/mille/new" style="margin-top:12px">
+    <form class="mt-12" method="post" action="/games/mille/new">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">Play vs CPU</button>
     </form>
 </div>
 
 {% if flash %}
-<div class="box" style="border-color:var(--warn)">
-    <p style="color:var(--warn)">{{ flash }}</p>
+<div class="box box-warn">
+    <p class="text-warn">{{ flash }}</p>
 </div>
 {% endif %}
 
 {% if incoming_invite %}
-<div class="box" style="border-color:var(--accent)">
+<div class="box box-accent">
     <h2>Incoming Challenge</h2>
-    <p><strong style="color:var(--accent)">{{ incoming_invite.from_username }}</strong> wants to play!</p>
-    <div style="display:flex;gap:8px;margin-top:10px">
+    <p><strong class="text-accent">{{ incoming_invite.from_username }}</strong> wants to play!</p>
+    <div class="button-row">
         <form method="post" action="/games/mille/invite/accept">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
@@ -157,7 +157,7 @@
         <form method="post" action="/games/mille/invite/decline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="from_user_id" value="{{ incoming_invite.from_user_id }}">
-            <button type="submit" style="background:var(--border);color:var(--fg)">Decline</button>
+            <button class="btn-muted" type="submit">Decline</button>
         </form>
     </div>
 </div>
@@ -172,7 +172,7 @@
         <tr>
             <td>{{ loop.index }}</td>
             <td>{{ hs.username }}</td>
-            <td style="color:var(--accent);font-weight:bold">{{ hs.best_score }}</td>
+            <td class="text-accent bold">{{ hs.best_score }}</td>
             <td>{{ hs.wins }} / {{ hs.games_played - hs.wins }}</td>
             <td>{{ hs.games_played }}</td>
         </tr>
@@ -190,7 +190,7 @@
         <tr>
             <td>{{ u.username }}</td>
             <td>
-                <form method="post" action="/games/mille/invite" style="display:inline">
+                <form class="inline-form" method="post" action="/games/mille/invite">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="to_user_id" value="{{ u.id }}">
                     <button type="submit" class="btn-small">Challenge</button>
@@ -208,17 +208,17 @@
 <meta http-equiv="refresh" content="3">
 <div class="box">
     <h2>Mille Bornes &mdash; Challenge Sent</h2>
-    <p>Waiting for <strong style="color:var(--accent)">{{ invite.to_username }}</strong> to accept your challenge...</p>
+    <p>Waiting for <strong class="text-accent">{{ invite.to_username }}</strong> to accept your challenge...</p>
     <p class="meta">Expires in {{ remaining }}s</p>
-    <form method="post" action="/games/mille/invite/cancel" style="margin-top:10px">
+    <form class="mt-10" method="post" action="/games/mille/invite/cancel">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" style="background:var(--border);color:var(--fg)">Cancel</button>
+        <button class="btn-muted" type="submit">Cancel</button>
     </form>
 </div>
 
 {% if flash %}
-<div class="box" style="border-color:var(--warn)">
-    <p style="color:var(--warn)">{{ flash }}</p>
+<div class="box box-warn">
+    <p class="text-warn">{{ flash }}</p>
 </div>
 {% endif %}
 
@@ -228,10 +228,10 @@
 {{ player_status_table(game.human, "You", game.cpu, "CPU", game.deck|length) }}
 {{ message_box(game.messages) }}
 
-<div class="box" style="border-color:var(--accent)">
+<div class="box box-accent">
     <h2>Coup Fourr&eacute;!</h2>
-    <p>The CPU played a hazard, but you have <strong style="color:var(--accent)">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
-    <div style="display:flex;gap:8px;margin-top:10px">
+    <p>The CPU played a hazard, but you have <strong class="text-accent">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
+    <div class="button-row">
         <form method="post" action="/games/mille/coup">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="yes">
@@ -240,7 +240,7 @@
         <form method="post" action="/games/mille/coup">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="no">
-            <button type="submit" style="background:var(--border);color:var(--fg)">No &mdash; Decline</button>
+            <button class="btn-muted" type="submit">No &mdash; Decline</button>
         </form>
     </div>
 </div>
@@ -262,12 +262,12 @@
         <tr>
             <td>You</td>
             <td>{{ game.human.miles }}</td>
-            <td style="color:var(--accent)">{{ game.human.safeties|join(", ") }}</td>
+            <td class="text-accent">{{ game.human.safeties|join(", ") }}</td>
         </tr>
         <tr>
             <td>CPU</td>
             <td>{{ game.cpu.miles }}</td>
-            <td style="color:var(--accent)">{{ game.cpu.safeties|join(", ") }}</td>
+            <td class="text-accent">{{ game.cpu.safeties|join(", ") }}</td>
         </tr>
     </table>
 </div>
@@ -276,7 +276,7 @@
 {{ scoring_table(game.human, "You", game.cpu, "CPU", human_score, cpu_score, game.winner) }}
 
 <div class="box">
-    <form method="post" action="/games/mille/new" style="margin-top:0">
+    <form class="mt-0" method="post" action="/games/mille/new">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">Play Again</button>
     </form>
@@ -292,7 +292,7 @@
 <div class="box">
     <form method="post" action="/games/mille/pvp/quit">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
+        <button class="btn-muted text-warn" type="submit">Forfeit Game</button>
     </form>
 </div>
 
@@ -304,13 +304,13 @@
 {{ message_box(game.messages) }}
 
 <div class="box">
-    <p>Waiting for <strong style="color:var(--accent)">{{ opp.name }}</strong> to play...</p>
+    <p>Waiting for <strong class="text-accent">{{ opp.name }}</strong> to play...</p>
 </div>
 
 <div class="box">
     <form method="post" action="/games/mille/pvp/quit">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" style="background:var(--border);color:var(--warn)">Forfeit Game</button>
+        <button class="btn-muted text-warn" type="submit">Forfeit Game</button>
     </form>
 </div>
 
@@ -320,10 +320,10 @@
 {{ player_status_table(me, "You", opp, opp.name, game.deck|length) }}
 {{ message_box(game.messages) }}
 
-<div class="box" style="border-color:var(--accent)">
+<div class="box box-accent">
     <h2>Coup Fourr&eacute;!</h2>
-    <p><strong>{{ opp.name }}</strong> played a hazard, but you have <strong style="color:var(--accent)">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
-    <div style="display:flex;gap:8px;margin-top:10px">
+    <p><strong>{{ opp.name }}</strong> played a hazard, but you have <strong class="text-accent">{{ coup_fourre_safety }}</strong>! Play it as a Coup Fourr&eacute;?</p>
+    <div class="button-row">
         <form method="post" action="/games/mille/pvp/coup">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="yes">
@@ -332,7 +332,7 @@
         <form method="post" action="/games/mille/pvp/coup">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="accept" value="no">
-            <button type="submit" style="background:var(--border);color:var(--fg)">No &mdash; Decline</button>
+            <button class="btn-muted" type="submit">No &mdash; Decline</button>
         </form>
     </div>
 </div>
@@ -347,12 +347,12 @@
         <tr>
             <td>You</td>
             <td>{{ me.miles }}</td>
-            <td style="color:var(--accent)">{{ me.safeties|join(", ") }}</td>
+            <td class="text-accent">{{ me.safeties|join(", ") }}</td>
         </tr>
         <tr>
             <td>{{ opp.name }}</td>
             <td>{{ opp.miles }}</td>
-            <td style="color:var(--accent)">{{ opp.safeties|join(", ") }}</td>
+            <td class="text-accent">{{ opp.safeties|join(", ") }}</td>
         </tr>
     </table>
 </div>

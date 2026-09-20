@@ -6,7 +6,7 @@
 </div>
 
 {% if error %}
-<div class="box" style="border-color: red; color: red;">
+<div class="box box-alert">
     <strong>Error:</strong> {{ error }}
 </div>
 {% endif %}
@@ -16,7 +16,7 @@
         {% if profile_user.access_level == 2 %}<span class="admin-badge">SUPER</span>{% elif profile_user.access_level == 1 %}<span class="admin-badge">ADMIN</span>{% endif %}
     </h2>
     <p>
-        Status: <span style="color: var({% if is_online %}--fg{% else %}--dim{% endif %});">{% if is_online %}ONLINE{% else %}offline{% endif %}</span>
+        Status: <span class="{% if is_online %}text-fg{% else %}text-dim{% endif %}">{% if is_online %}ONLINE{% else %}offline{% endif %}</span>
     </p>
     <p class="meta">Member since: {{ profile_user.created_at }}</p>
     <p class="meta">Last login: {{ profile_user.last_login or 'Never' }}</p>

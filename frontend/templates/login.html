@@ -26,8 +26,8 @@
     {% endif %}
 
     <div class="tabs">
-        <button class="tab active" onclick="showTab('login')">Login</button>
-        <button class="tab" onclick="showTab('register')">New User</button>
+        <button type="button" class="tab active" data-tab="login">Login</button>
+        <button type="button" class="tab" data-tab="register">New User</button>
     </div>
 
     <div id="login-form">
@@ -38,7 +38,7 @@
         </form>
     </div>
 
-    <div id="register-form" style="display:none;">
+    <div id="register-form" class="hidden">
         <form method="post" action="/register">
             <input type="text" name="username" placeholder="Username" required minlength="2" maxlength="32">
             <input type="password" name="password" placeholder="Password" required minlength="8" maxlength="72">
@@ -47,14 +47,8 @@
         </form>
     </div>
 </div>
+{% endblock %}
 
-<script>
-function showTab(tab) {
-    document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
-    document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
-    document.querySelectorAll('.tab').forEach((el, i) => {
-        el.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
-    });
-}
-</script>
+{% block scripts %}
+<script src="/static/js/login.js?v={{ static_version }}" defer></script>
 {% endblock %}

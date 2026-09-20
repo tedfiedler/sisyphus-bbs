@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<div style="text-align: center; margin-top: 2rem;">
-    <p style="font-size: 1.3em;"><span style="color: var(--dim); font-style: italic;">"One must imagine Sisyphus happy"</span> <span style="color: red;">| Albert Camus</span></p>
+<div class="center mt-2rem">
+    <p class="text-130"><span class="text-dim italic">"One must imagine Sisyphus happy"</span> <span class="text-alert">| Albert Camus</span></p>
 </div>
 {% if landing_message %}
-<div class="box" style="max-width: 600px; margin: 2rem auto; text-align: left;">
+<div class="box landing-box">
     <div class="post-body">{{ landing_message }}</div>
 </div>
 {% endif %}
-<div style="text-align: center; margin-top: 3rem;">
-    <p style="font-size: 0.85em; color: red;">Powered by Python</p>
+<div class="center mt-3rem">
+    <p class="text-85 text-alert">Powered by Python</p>
 </div>
 {% endblock %}

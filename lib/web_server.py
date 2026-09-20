@@ -49,15 +49,15 @@ class _DMCheckMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_DMCheckMiddleware)
 
 
-# The templates use inline scripts, handlers, and styles, so 'unsafe-inline'
-# has to stay until those move to static files; the policy does not stop an
-# injected inline script. What it does do is keep everything same-origin:
-# no third-party script or frame can be loaded, forms cannot post off-site,
-# and an injected script has nowhere external to send what it reads.
+# No 'unsafe-inline': if markup is ever injected into a page, the browser
+# will not run its <script>, on* handlers, or style attributes. That only
+# works because the templates contain none of their own — scripts live in
+# frontend/static/js, styles are classes in style.css, and page data reaches
+# scripts through data-* attributes. tests/test_csp.py keeps it that way.
 _CSP = "; ".join((
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self'",
+    "style-src 'self'",
     "img-src 'self' data:",
     "connect-src 'self'",
     "object-src 'none'",

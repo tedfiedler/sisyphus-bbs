@@ -7,6 +7,7 @@ action from that screen. All game logic is in ``lib.climb``.
 """
 
 import secrets
+from datetime import date
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -42,12 +43,73 @@ def _news_line(kind: str, username: str, detail: str, player: store.Player) -> s
     )
 
 
+async def _camp(player: store.Player, today) -> list[scenes.Target]:
+    """The sleepers this player could rob right now, strongest first."""
+    targets = []
+    for sleeper in await store.sleepers(player.user_id, today):
+        them = sleeper.player
+        away = (today - them.last_day).days
+        reason = rules.why_not_rob(
+            player.climber, them.climber, days_since_played=away,
+            minutes_since_seen=sleeper.minutes_since_seen,
+            days_since_joined=sleeper.days_since_joined, already_today=sleeper.already_today,
+        )
+        if reason is None:
+            targets.append(scenes.Target(
+                user_id=sleeper.user_id, name=sleeper.username,
+                foe=rules.sleeper_as_foe(them.climber, sleeper.username, away),
+                title=rules.title(them.climber.ascents),
+                band=data.BANDS[min(them.climber.weapon, them.climber.armour) - 1],
+                in_room=rules.is_sheltered(them.climber.room, away),
+            ))
+    targets.sort(key=lambda t: (-t.foe.xp, t.name.lower()))
+    return targets[:data.CAMP_LIST_LENGTH]
+
+
+async def _settle_robbery(user: dict, player: store.Player, kind: str, detail: dict) -> None:
+    """Move the coin between the two climbers' real rows.
+
+    The victim is debited first and the robber credited only with what was
+    actually taken, so a victim who banked their purse mid-fight loses nothing
+    and nothing is created. If the process died between the two writes, coin
+    would be lost, never duplicated.
+    """
+    name = user["username"]
+    if kind == scenes.ROBBED:
+        def debit(victim: store.Player):
+            taken, lost_xp = rules.apply_robbed(victim.climber)
+            note = text.MAIL_ROBBED if taken else text.MAIL_ROBBED_EMPTY
+            victim.mail.append(note.format(name=name, drachmae=taken, xp=lost_xp))
+            return taken
+
+        taken = await store.change(detail["victim"], debit) or 0
+
+        def credit(robber: store.Player):
+            robber.climber.purse += taken
+            line = text.ROBBED_THEM if taken else text.ROBBED_NOTHING
+            robber.notice.append(line.format(name=detail["name"], drachmae=taken))
+
+        await store.change(user["id"], credit)
+    else:
+        def reward(victim: store.Player):
+            xp = rules.apply_defended(victim.climber, detail["purse"], detail["level"])
+            victim.mail.append(text.MAIL_DEFENDED.format(name=name, drachmae=detail["purse"], xp=xp))
+
+        await store.change(detail["victim"], reward)
+
+
 async def _tell_the_town(user: dict, player: store.Player, today) -> None:
     """Act on what just happened, once the save that made it real has succeeded."""
     for kind, detail in player.happenings:
         if kind == scenes.WROTE:
             await store.add_wall_line(user["id"], detail)
             continue
+        if kind == scenes.ATTEMPTED:
+            await store.note_robbery(today, user["id"], detail)
+            continue
+        if kind in (scenes.ROBBED, scenes.FELL_TO):
+            await _settle_robbery(user, player, kind, detail)
+            detail = detail["name"]
         if kind in (scenes.LEVEL_GAINED, scenes.ASCENDED):
             await store.record_score(
                 user["id"], rules.renown(player.climber), detail, won=kind == scenes.ASCENDED,
@@ -59,25 +121,38 @@ async def _tell_the_town(user: dict, player: store.Player, today) -> None:
 async def climb_page(request: Request, user: dict = Depends(require_user)):
     """Render whatever screen the player is on."""
     player = await store.load(user["id"])
-    if player is not None and scenes.dawn(player, clock.today()):
-        # Lost the race to another tab? Then that tab applied dawn; reload it.
-        if not await store.save(player):
+    if player is not None:
+        changed = scenes.dawn(player, clock.today())
+        if player.mail:
+            # What happened while they were away, shown once, above the day's first words.
+            player.notice, player.mail, changed = player.mail + player.notice, [], True
+        # Lost the race to another tab? Then that tab did this; show its result.
+        if changed and not await store.save(player):
             player = await store.load(user["id"])
 
     if player is None:
         context = {"screen": scenes.welcome(), "status": None, "notice": [], "turn": 0}
     else:
+        today = clock.today()
+        camp = await _camp(player, today) if player.scene == scenes.CAMP and player.climber.alive else None
         context = {
-            "screen": scenes.screen(player), "status": scenes.status(player),
+            "screen": scenes.screen(player, camp), "status": scenes.status(player),
             "notice": player.notice, "turn": player.turn,
         }
-        if player.scene == scenes.STELE and player.climber.alive:
-            context["stele"] = [
+        if player.scene in (scenes.STELE, scenes.OTHERS) and player.climber.alive:
+            rows = [
                 {**row, "title": rules.title(row["ascents"]), "band": data.BANDS[row["level"] - 1],
-                 "calling": data.CALLINGS[row["calling"]][0]}
+                 "calling": data.CALLINGS[row["calling"]][0],
+                 "weapon": data.WEAPONS[row["weapon"] - 1], "armour": data.ARMOURS[row["armour"] - 1],
+                 "sheltered": rules.is_sheltered(
+                     bool(row["room"]), (today - date.fromisoformat(row["last_day"])).days)}
                 for row in await store.rankings()
             ]
-            context["stele_empty"] = text.STELE_EMPTY
+            if player.scene == scenes.STELE:
+                context["stele"], context["stele_empty"] = rows, text.STELE_EMPTY
+            else:
+                context["others"] = [row for row in rows if row["user_id"] != user["id"]]
+                context["others_empty"] = text.OTHERS_EMPTY
         elif player.scene == scenes.HERALD and player.climber.alive:
             today = clock.today()
             await store.ensure_daily_line(today, text.DAILY[today.toordinal() % len(text.DAILY)])
@@ -123,8 +198,9 @@ async def climb_act(
         await store.save(player)
         return _back()
 
+    camp = await _camp(player, today) if player.scene == scenes.CAMP else None
     try:
-        scenes.act(rng, player, action, amount, words)
+        scenes.act(rng, player, action, amount, words, camp)
     except scenes.NotOffered:
         return _back()
     if await store.save(player):

@@ -203,7 +203,7 @@ All original. Each costs the slope fight that found it.
 | **Crossroads shrine** | Leave an offering to Hermes. One in three, he is pleased: +3 slope fights today. |
 | **Wild hive** | Reach in: honey (+2 max HP, permanently) or stings (lose a third of your HP; never fatal). |
 | **Rockslide** | Lose HP; never fatal. |
-| **Wandering oracle** | Tells you one true thing: how far it is to your next gate or, at the wall, what the garden will ask of you. (Who is sleeping rich at the Camp joins this in step 6. "What Ladon is weak to" was dropped: he has no such weakness to reveal.) |
+| **Wandering oracle** | Tells you one true thing: how far it is to your next gate or, at the wall, what the garden will ask of you. (Intelligence about other climbers lives at the Shepherds' Fire instead, where you can ask about the others. "What Ladon is weak to" was dropped: he has no such weakness to reveal.) |
 | **Eagle's gift** | An eagle drops something shiny: drachmae scaled to your band. |
 | **Toll-taker** | Pay a small toll, or fight a strong creature for double coin. |
 | **Shade of a fallen climber** | Rare. They finish a lesson they were learning when they died: +1 calling rank. |
@@ -335,7 +335,9 @@ Everything fades to black at "walk by the river".
 ### 9.4 Rooms, and Nikandros
 
 - **A room for the night** costs about two kills' coin at your band. In a room
-  you cannot be robbed. Otherwise you sleep at the Camp.
+  you cannot be robbed. Otherwise you sleep at the Camp. One night's rent covers
+  tonight and all of tomorrow and no longer: dawn is applied lazily, and without
+  that limit a single night's rent would shelter an absent climber for ever.
 - **A cup of wine**: a small heal and a piece of gossip (a hint, or news).
 - **A quiet word**: for about twenty kills' coin, Nikandros lends you a key.
   Once, tonight, you may challenge someone who is asleep in a room. Expensive
@@ -357,8 +359,10 @@ and **ask about someone** (one climber's level, gear, and where they sleep).
   attacked by you today, and **no more than one level below you**. Climbers in
   their first three days cannot be attacked.
 - You fight their stats, played by the game (§6).
-- **You win:** you take the drachmae they had in hand, plus XP scaled to their
-  level; they lose 5% of their XP toward the next level. They do *not* lose
+- **You win:** you take the drachmae they have in hand *when the fight ends*
+  (the purse is a real transfer between the two rows, debited before it is
+  credited, so banking mid-fight saves the coin and nothing can be duplicated),
+  plus XP scaled to their level; they lose 5% of their XP toward the next level. They do *not* lose
   their next day: they wake to a note saying who robbed them, and the Herald
   tells the town.
 - **You lose:** you die (§4); they gain XP and your purse.
@@ -567,7 +571,7 @@ are the argument for having one:
 | 3 ✅ | Forge, Aegis Row, Palaestra and gatekeepers, the Orchard Gate | **Done 2026-09-20.** Level 1 → 12 is playable: a test bot that can see only what the screens offer climbs from the Foothills to the Garden Wall in about a month of game days (`tests/test_climb_town.py`). |
 | 4 ✅ | Ladon, ascent and reset, titles, the Stele, `game_scores` | **Done 2026-09-20.** The whole loop closes: a test bot that sees only the screens climbs, kills Ladon, wakes in the Foothills with its calling rank and an ascent to its name, and starts again (`tests/test_climb_summit.py`). **Steps 1–4 are a complete single-player game.** |
 | 5 ✅ | The Lethe House: Orpheus, the wall, rooms, Nikandros; the Herald; events | **Done 2026-09-20.** Orpheus' eight songs, the wall (the only player-written text: escaped, no links, five lines a day, sysop can remove), rooms, wine and gossip; the Herald's three days of news; thirteen Slopes events including the man with the boulder; the hidden Shepherds' Fire (knucklebones, change of calling); and both sysop tools. Deferred to step 6, where they have a use: Nikandros' key, and "ask about someone" at the Fire. |
-| 6 | The Camp and robbery; the key | Two-player tests, as for Mille Bornes PvP. |
+| 6 ✅ | The Camp and robbery; the key | **Done 2026-09-20.** Two-player tests (`tests/test_climb_camp.py`), including the coin-duplication exploit a snapshot purse would have allowed. Also: a mailbox so the victim's note survives dawn, where people sleep on the Stele, and "ask about the others" at the Fire. |
 | 7 | Courtship: the regulars, then other climbers with opt-in and closed doors | Consent rules are tests, not comments. |
 | 8 | All prose in `text.py`; read-through for tone; hotkeys; phone layout; headless-browser pass under the CSP | It is fun to read. |
 

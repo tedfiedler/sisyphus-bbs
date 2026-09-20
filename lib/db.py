@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS climb_players (
     fight TEXT,
     event TEXT,
     notice TEXT NOT NULL DEFAULT '[]',
+    mail TEXT NOT NULL DEFAULT '[]',
     last_day TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -146,6 +147,15 @@ CREATE TABLE IF NOT EXISTS climb_wall (
     user_id INTEGER NOT NULL REFERENCES users(id),
     line TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Who tried to rob whom, and when: one attempt per pair per day.
+CREATE TABLE IF NOT EXISTS climb_robberies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    day TEXT NOT NULL,
+    attacker_id INTEGER NOT NULL REFERENCES users(id),
+    victim_id INTEGER NOT NULL REFERENCES users(id),
+    UNIQUE(day, attacker_id, victim_id)
 );
 
 -- Indexes for the lookups the app makes on every page: thread and board
@@ -187,8 +197,11 @@ async def _migrate(db: aiosqlite.Connection):
 
     # climb_players.event arrived after the table was first deployed.
     cursor = await db.execute("PRAGMA table_info(climb_players)")
-    if "event" not in {row[1] for row in await cursor.fetchall()}:
+    climb_columns = {row[1] for row in await cursor.fetchall()}
+    if "event" not in climb_columns:
         await db.execute("ALTER TABLE climb_players ADD COLUMN event TEXT")
+    if "mail" not in climb_columns:
+        await db.execute("ALTER TABLE climb_players ADD COLUMN mail TEXT NOT NULL DEFAULT '[]'")
 
     # Session tokens are stored as SHA-256 hex digests. Rows written before
     # that hold the raw token, which can no longer match a lookup; drop them

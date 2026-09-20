@@ -193,6 +193,17 @@ KNUCKLEBONES_PER_DAY = 3
 KNUCKLEBONES_MAX_STAKE_KILLS = 10
 KNUCKLEBONES_WIN_CHANCE = 0.5
 
+# --- the Camp: robbing the sleeping ---------------------------------------------
+ROB_XP_LOSS = 0.05              # what the robbed lose of this level's XP
+ROB_XP_KILLS = 2                # a win is worth this many kills' XP at the VICTIM's band
+DEFENDED_XP_KILLS = 1           # what a sleeper earns when the robber loses
+ROB_LEVELS_BELOW = 1            # you may rob someone at most this many levels beneath you
+AWAKE_MINUTES = 10              # acted this recently: awake, and not to be robbed
+NEWCOMER_DAYS = 3
+IDLE_DAYS = 14
+KEY_PRICE_IN_KILLS = 20.0
+CAMP_LIST_LENGTH = 9
+
 # --- the Lethe House ----------------------------------------------------------
 # Orpheus' songs and how often he picks each. The shares sum to 1.
 SONGS = (

@@ -34,7 +34,7 @@
             <td class="c-gold">{{ row.ascents }}</td>
             <td>{{ row.band }} <span class="c-dim">({{ row.level }})</span></td>
             <td>{{ row.calling }}</td>
-            <td>{% if not row.alive %}<span class="c-blood">dead until dawn</span>{% endif %}
+            <td>{% if not row.alive %}<span class="c-blood">dead until dawn</span>{% elif row.sheltered %}<span class="c-dim">in a room</span>{% elif row.sheltered is defined %}<span class="c-dim">at the Camp</span>{% endif %}
                 {% if user.access_level >= 1 %}
                 <form method="post" action="/games/climb/admin/reset/{{ row.user_id }}" class="inline-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -47,6 +47,25 @@
     </table>
     {% else %}
     <p class="c-dim">{{ stele_empty }}</p>
+    {% endif %}
+    {% endif %}
+
+    {% if others is defined %}
+    {% if others %}
+    <table class="climb-stele">
+        <tr><th>Climber</th><th>Where</th><th>Carries</th><th>Wears</th><th>Sleeps</th></tr>
+        {% for row in others %}
+        <tr>
+            <td>{{ row.username }} <span class="c-dim">{{ row.title }}</span></td>
+            <td>{{ row.band }} <span class="c-dim">({{ row.level }})</span></td>
+            <td>{{ row.weapon }}</td>
+            <td>{{ row.armour }}</td>
+            <td>{% if not row.alive %}<span class="c-blood">dead until dawn</span>{% elif row.sheltered %}in a room{% else %}at the Camp{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="c-dim">{{ others_empty }}</p>
     {% endif %}
     {% endif %}
 

@@ -326,6 +326,13 @@ HERALD_QUIET = "\"NOTHING HAS HAPPENED,\" bellows Stentor, \"AND I WILL KEEP YOU
 
 # {name} is a climber; {detail} depends on the kind of news. Variants rotate.
 NEWS = {
+    "robbed": (
+        "{name} robbed {detail} in the night. {detail} is advised to bank their coin.",
+        "{detail} woke poorer. {name} was seen leaving the Camp, whistling.",
+    ),
+    "fell_to": (
+        "{name} tried to rob {detail} and was beaten by someone who was technically asleep.",
+    ),
     "kid": (
         "{name} came down the mountain with somebody's lost goat on their shoulders. The goat is said to be unrepentant.",
     ),
@@ -463,3 +470,44 @@ KNUCKLES_WON = "The bones fall your way. {n} drachmae slide across the rock to y
 KNUCKLES_LOST = "The bones fall badly. {n} drachmae slide across the rock, away from you."
 KNUCKLES_REFUSED = "The shepherds look at your stake, then at each other. No."
 NEW_CALLING = "You sit a long while by the fire. When you stand, you follow {calling}, at rank {rank}, and something you used to know has gone quiet."
+
+# ---------------------------------------------------------------------------
+# The Camp
+# ---------------------------------------------------------------------------
+
+CAMP = (
+    "The Camp, on the flat ground below the first olives, where climbers without "
+    "the price of a room roll up in their cloaks. It is dark, and everyone here is "
+    "asleep, or pretending to be.",
+    "Nobody will thank you for what you are thinking of doing.",
+)
+CAMP_SPENT = "You have done enough skulking for one night."
+CAMP_EMPTY = "Nobody here is worth the risk, or within your reach."
+CAMP_KEY = "Nikandros' key is in your pocket. One of the doors upstairs will open to it."
+SLEEPER = "{name}, {title}, asleep in {band} gear."
+SLEEPER_ROOM = "{name}, {title}, asleep upstairs at the Lethe House."
+ROB_OPENS = "You pick your way between the sleepers to {name}, and reach for the purse. {name} wakes."
+ROB_OPENS_ROOM = "The key turns. {name} is awake before the door is fully open."
+ROBBED_THEM = "{name} goes down. The purse is yours: {drachmae} drachmae."
+ROBBED_NOTHING = "{name} goes down. The purse is empty. They banked it, as sensible people do."
+ROB_FLED = "You melt back into the dark before anyone else wakes."
+ROB_LOST = "{name} was better than they looked asleep."
+
+KEY_OFFER = "\"There is a key,\" says Nikandros, very quietly, \"for {price} drachmae. One door, tonight only. I never said so.\""
+KEY_BOUGHT = "Nikandros palms {price} drachmae and slides something across the bar under a cloth."
+KEY_REFUSED = "Nikandros has no idea what you are talking about."
+
+# Left for the victim to find.
+MAIL_ROBBED = "While you slept, {name} robbed you: {drachmae} drachmae gone, and {xp} XP of peace of mind. Bank your coin; rent a room."
+MAIL_ROBBED_EMPTY = "While you slept, {name} went through your things and found an empty purse. You lost {xp} XP of peace of mind, and nothing else."
+MAIL_DEFENDED = "While you slept, {name} tried to rob you, and you beat them without properly waking. Their purse ({drachmae} drachmae) is yours, and {xp} XP."
+
+# ---------------------------------------------------------------------------
+# Asking about the others, at the Fire
+# ---------------------------------------------------------------------------
+
+OTHERS = (
+    "\"Who's on the mountain?\" The old shepherd pokes the fire. \"We see everyone go "
+    "up. We see what they carry. We see where they sleep.\"",
+)
+OTHERS_EMPTY = "\"Just you,\" she says. \"For now.\""

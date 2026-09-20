@@ -25,11 +25,28 @@ FORGE, AEGIS, PALAESTRA, ORCHARD = "forge", "aegis", "palaestra", "orchard"
 SUMMIT, STELE = "summit", "stele"
 LETHE, WALL, HERALD = "lethe", "wall", "herald"
 EVENT, FIRE = "event", "fire"
+CAMP, OTHERS = "camp", "others"
 
 # What a player's `happenings` may contain, for the route to act on: each is
 # (kind, detail). The first four are news; WROTE carries a line for the wall.
 ARRIVED, LEVEL_GAINED, DIED, ASCENDED, WROTE = "arrival", "level", "death", "ascent", "wall"
 KID_HOME = "kid"
+# Robbery. ATTEMPTED's detail is the victim's id; the other two carry a dict
+# (victim id and name, and for FELL_TO the purse the robber dropped), because
+# the route has to settle them against the victim's own row.
+ATTEMPTED, ROBBED, FELL_TO = "attempted", "robbed", "fell_to"
+
+
+@dataclass
+class Target:
+    """A sleeper the Camp screen offers, as prepared by the route."""
+
+    user_id: int
+    name: str
+    foe: rules.Foe
+    title: str
+    band: str
+    in_room: bool
 
 
 class NotOffered(Exception):
@@ -112,7 +129,7 @@ _SKILL_LABELS = {
 }
 
 
-def screen(player: Player) -> Screen:
+def screen(player: Player, camp: list[Target] | None = None) -> Screen:
     c = player.climber
     if not c.alive:
         return Screen("Dead until dawn", list(text.DEAD))
@@ -162,8 +179,29 @@ def screen(player: Player) -> Screen:
         for calling, (key, label) in _CALLING_CHOICES.items():
             if calling != c.calling:
                 choices.append(Choice(key, f"Take up {label}", f"calling:{calling}"))
+        choices.append(Choice("o", "Ask about the (o)thers", f"go:{OTHERS}"))
         choices.append(Choice("b", "(B)ack to the Slopes", f"go:{SLOPES}"))
         return Screen("The Shepherds' Fire", lines, choices)
+
+    if player.scene == CAMP:
+        lines = list(text.CAMP)
+        choices = []
+        if c.key:
+            lines.append(text.CAMP_KEY)
+        if c.duels_left < 1:
+            lines.append(text.CAMP_SPENT)
+        elif not camp:
+            lines.append(text.CAMP_EMPTY)
+        else:
+            for number, target in enumerate(camp, start=1):
+                line = text.SLEEPER_ROOM if target.in_room else text.SLEEPER
+                lines.append(f"({number}) " + line.format(name=target.name, title=target.title, band=target.band))
+                choices.append(Choice(str(number), f"({number}) Rob {target.name}", f"rob:{target.user_id}"))
+        choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
+        return Screen(f"The Camp ({c.duels_left} left tonight)", lines, choices)
+
+    if player.scene == OTHERS:
+        return Screen("Around the fire", list(text.OTHERS), [Choice("b", "(B)ack to the fire", f"go:{FIRE}")])
 
     if player.scene == SUMMIT:
         return Screen("The Garden", [text.SUMMIT_REST], [Choice("d", "(D)own to the Agora", f"go:{AGORA}")])
@@ -197,6 +235,10 @@ def screen(player: Player) -> Screen:
                 choices.append(Choice("r", "Take a (R)oom for the night", "room"))
         if c.purse >= rules.wine_price(c):
             choices.append(Choice("c", f"A (C)up of wine ({rules.wine_price(c)} dr)", "wine"))
+        if not c.key:
+            lines.append(text.KEY_OFFER.format(price=rules.key_price(c)))
+            if c.purse >= rules.key_price(c):
+                choices.append(Choice("k", "A quiet word about a (k)ey", "key"))
         choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
         return Screen("The Lethe House", lines, choices)
 
@@ -293,6 +335,7 @@ def screen(player: Player) -> Screen:
         Choice("l", "The (L)ethe House", f"go:{LETHE}"),
         Choice("p", "The (P)alaestra", f"go:{PALAESTRA}"),
         Choice("o", "The (O)rchard Gate", f"go:{ORCHARD}"),
+        Choice("m", "The Ca(m)p, after dark", f"go:{CAMP}"),
         Choice("n", "(N)ews from the Herald", f"go:{HERALD}"),
         Choice("s", "The (S)tele", f"go:{STELE}"),
     ])
@@ -354,6 +397,21 @@ def _after_blows(rng: Random, player: Player) -> None:
     if fight.outcome is Outcome.ONGOING:
         return
     player.fight = None
+    if fight.foe.kind == rules.CLIMBER:
+        victim = {"victim": fight.target_id, "name": fight.foe.name}
+        player.scene = CAMP
+        if fight.outcome is Outcome.WON:
+            rules.apply_victory(rng, c, fight)               # the XP; the purse is settled by the route
+            player.happenings.append((ROBBED, victim))
+        elif fight.outcome is Outcome.FLED:
+            player.notice.append(text.ROB_FLED)
+        else:
+            player.notice.append(text.ROB_LOST.format(name=fight.foe.name))
+            drachmae, xp = rules.apply_death(c)
+            player.happenings.append((FELL_TO, {**victim, "purse": drachmae, "level": c.level}))
+            player.notice += [line.format(drachmae=drachmae, xp=xp) for line in text.DEATH]
+            player.scene = DEAD
+        return
     if fight.foe.kind == rules.GATEKEEPER:
         _, won, lost = text.GATEKEEPERS[c.level - 1]
         if fight.outcome is Outcome.WON:
@@ -408,9 +466,10 @@ def _event_outcome(rng: Random, player: Player, result: rules.EventResult) -> No
         _start_fight(rng, player, result.foe)
 
 
-def act(rng: Random, player: Player, action: str, amount: int = 0, words: str = "") -> None:
+def act(rng: Random, player: Player, action: str, amount: int = 0, words: str = "",
+        camp: list[Target] | None = None) -> None:
     """Perform one action from the player's current screen, or raise NotOffered."""
-    offered = {choice.action: choice for choice in screen(player).choices}
+    offered = {choice.action: choice for choice in screen(player, camp).choices}
     if action not in offered:
         raise NotOffered(action)
     c = player.climber
@@ -455,6 +514,26 @@ def act(rng: Random, player: Player, action: str, amount: int = 0, words: str = 
         rules.take_turn(rng, c, player.fight, action.removeprefix("fight:"))
         player.notice += _narrate(player.fight)
         _after_blows(rng, player)
+
+    elif action.startswith("rob:"):
+        target = next(t for t in camp if f"rob:{t.user_id}" == action)
+        c.duels_left -= 1
+        if target.in_room:
+            c.key = False
+        player.happenings.append((ATTEMPTED, target.user_id))
+        player.fight = rules.open_fight(rng, c, target.foe)
+        player.fight.target_id = target.user_id
+        player.scene = FIGHT
+        opens = text.ROB_OPENS_ROOM if target.in_room else text.ROB_OPENS
+        player.notice.append(opens.format(name=target.name))
+        player.notice += _narrate(player.fight)
+        _after_blows(rng, player)
+
+    elif action == "key":
+        try:
+            player.notice.append(text.KEY_BOUGHT.format(price=rules.apply_key(c)))
+        except ValueError:
+            player.notice.append(text.KEY_REFUSED)
 
     elif action == "song":
         song, n = rules.apply_song(rng, c)

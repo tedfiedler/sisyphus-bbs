@@ -102,7 +102,7 @@ async def test_a_newcomer_chooses_a_calling(alice, dice):
         assert text.BEGUN["torch"] in html
         assert offered(html) == [
             "go:slopes", "go:forge", "go:aegis", "go:hygieia", "go:vault", "go:lethe",
-            "go:palaestra", "go:orchard", "go:herald", "go:stele",
+            "go:palaestra", "go:orchard", "go:camp", "go:herald", "go:stele",
         ]
 
         # Asking again does not replace the climber you have.
@@ -430,7 +430,7 @@ async def test_every_choice_is_a_real_button_with_a_hotkey(alice, dice):
 async def test_every_screen_has_distinct_hotkeys():
     players = []
     for calling in data.CALLINGS:
-        for scene in ("agora", "slopes", "hygieia", "vault", "fight", "forge", "aegis", "palaestra", "orchard", "summit", "stele", "lethe", "wall", "herald", "fire"):
+        for scene in ("agora", "slopes", "hygieia", "vault", "fight", "forge", "aegis", "palaestra", "orchard", "summit", "stele", "lethe", "wall", "herald", "fire", "camp", "others"):
             c = rules.new_climber(calling)
             c.rank, c.skill_left, c.hp, c.vault = 40, 5, 3, 10
             c.level, c.purse, c.seeds, c.xp = 9, 10**9, 4, 10**9       # everything on offer at once

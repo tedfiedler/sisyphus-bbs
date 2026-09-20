@@ -49,6 +49,7 @@ class Climber:
     room: bool = False              # sleeping at the Lethe House tonight, not the Camp
     wall_today: int = 0
     knucklebones_today: int = 0
+    key: bool = False               # Nikandros' key: one room-sleeper may be robbed tonight
     # Known for good, through every ascent: the way to the Shepherds' Fire.
     fire_known: bool = False
 
@@ -85,6 +86,7 @@ class Fight:
     outcome: Outcome = Outcome.ONGOING
     # What happened, as (event, number) pairs, for the text layer to narrate.
     events: list[tuple[str, int]] = field(default_factory=list)
+    target_id: int | None = None    # the sleeping climber being robbed, if that is what this is
 
 
 # ---------------------------------------------------------------------------
@@ -402,7 +404,7 @@ def apply_dawn(c: Climber) -> None:
     c.duels_left = data.DUELS_PER_DAY
     c.skill_left = skill_uses_per_day(c)
     c.gate_tried_today = False
-    c.sung_today = c.mercy = c.room = False
+    c.sung_today = c.mercy = c.room = c.key = False
     c.hp_boost = c.wall_today = c.knucklebones_today = 0
     c.hp = max_hp(c)
 
@@ -549,6 +551,99 @@ def resolve_event(rng: Random, c: Climber, kind: str, option: str = "", amount: 
     strongest.name = "Toll-Taker"
     strongest.drachmae *= data.TOLL_FIGHT_PAYS
     return EventResult("toll_fight", foe=strongest)
+
+
+# ---------------------------------------------------------------------------
+# The Camp: robbing the sleeping
+# ---------------------------------------------------------------------------
+
+def is_sheltered(room: bool, days_since_played: int) -> bool:
+    """A night's rent covers tonight and all of tomorrow, and no longer.
+
+    Dawn is applied lazily, so a climber who rented a room and has not been
+    back still has ``room`` set. Without the limit, one night's rent would
+    protect an absent climber for ever.
+    """
+    return room and days_since_played <= 1
+
+
+def as_they_sleep(target: Climber, days_since_played: int) -> Climber:
+    """The target as they would wake: dawn applied if theirs is overdue."""
+    from copy import copy
+
+    sleeper = copy(target)
+    if days_since_played >= 1:
+        room = sleeper.room
+        apply_dawn(sleeper)
+        sleeper.room = room                 # shelter is judged by is_sheltered, not by dawn
+    return sleeper
+
+
+def why_not_rob(
+    attacker: Climber, target: Climber, *, days_since_played: int, minutes_since_seen: float,
+    days_since_joined: float, already_today: bool,
+) -> str | None:
+    """None if *attacker* may rob *target* now, else a short reason."""
+    sleeper = as_they_sleep(target, days_since_played)
+    if not attacker.alive or attacker.duels_left < 1:
+        return "spent"
+    if not sleeper.alive:
+        return "dead"
+    if minutes_since_seen < data.AWAKE_MINUTES:
+        return "awake"
+    if days_since_played >= data.IDLE_DAYS:
+        return "away"
+    if days_since_joined < data.NEWCOMER_DAYS:
+        return "newcomer"
+    if target.level < attacker.level - data.ROB_LEVELS_BELOW:
+        return "beneath"
+    if already_today:
+        return "already"
+    if is_sheltered(target.room, days_since_played) and not attacker.key:
+        return "sheltered"
+    return None
+
+
+def sleeper_as_foe(target: Climber, name: str, days_since_played: int) -> Foe:
+    """A sleeping climber as the game will play them: their own arm and armour."""
+    sleeper = as_they_sleep(target, days_since_played)
+    return Foe(
+        name=name, kind=CLIMBER,
+        hp=max(1, sleeper.hp), attack=attack_power(sleeper), guard=guard_power(sleeper),
+        xp=data.REF_XP[target.level - 1] * data.ROB_XP_KILLS,
+        drachmae=0,                         # the purse is a transfer, settled against the real row
+    )
+
+
+def apply_robbed(victim: Climber) -> tuple[int, int]:
+    """What being robbed costs: the purse and a little XP — never a day."""
+    taken, lost_xp = victim.purse, int(victim.xp * data.ROB_XP_LOSS)
+    victim.purse = 0
+    victim.xp -= lost_xp
+    return taken, lost_xp
+
+
+def apply_defended(victim: Climber, robbers_purse: int, robber_level: int) -> int:
+    """The robber lost. Their purse is yours, and you learned something in your sleep."""
+    xp = data.REF_XP[robber_level - 1] * data.DEFENDED_XP_KILLS
+    victim.purse += robbers_purse
+    victim.xp += xp
+    return xp
+
+
+def key_price(c: Climber) -> int:
+    return _kills_worth(c, data.KEY_PRICE_IN_KILLS)
+
+
+def apply_key(c: Climber) -> int:
+    if not c.alive or c.key:
+        raise ValueError("no key to buy")
+    price = key_price(c)
+    if price > c.purse:
+        raise ValueError("not enough drachmae in hand")
+    c.purse -= price
+    c.key = True
+    return price
 
 
 # ---------------------------------------------------------------------------

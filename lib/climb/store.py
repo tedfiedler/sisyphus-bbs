@@ -23,6 +23,10 @@ class Player:
     fight: rules.Fight | None = None
     event: str | None = None            # a Slopes event waiting for the climber's choice
     notice: list[str] = field(default_factory=list)      # what the last action looked like
+    # Things that happened to this climber while they were away (robbed in the
+    # night, defended in their sleep). Unlike `notice`, this survives dawn; the
+    # page moves it into `notice` the next time they look.
+    mail: list[str] = field(default_factory=list)
     last_day: date | None = None
     # Things the rest of the BBS should hear about (a level gained, an ascent).
     # Filled by scenes.act, acted on by the route once the save has succeeded,
@@ -63,6 +67,7 @@ def _from_row(row) -> Player:
         fight=_fight_from_json(row["fight"]),
         event=row["event"],
         notice=json.loads(row["notice"]),
+        mail=json.loads(row["mail"]),
         last_day=date.fromisoformat(row["last_day"]),
     )
 
@@ -99,12 +104,12 @@ async def save(player: Player) -> bool:
     db = await get_db()
     cursor = await db.execute(
         """UPDATE climb_players
-           SET climber = ?, scene = ?, fight = ?, event = ?, notice = ?, last_day = ?,
+           SET climber = ?, scene = ?, fight = ?, event = ?, notice = ?, mail = ?, last_day = ?,
                turn = turn + 1, last_seen = CURRENT_TIMESTAMP
            WHERE user_id = ? AND turn = ?""",
         (
             json.dumps(asdict(player.climber)), player.scene, _fight_to_json(player.fight),
-            player.event, json.dumps(player.notice), player.last_day.isoformat(),
+            player.event, json.dumps(player.notice), json.dumps(player.mail), player.last_day.isoformat(),
             player.user_id, player.turn,
         ),
     )
@@ -115,7 +120,7 @@ async def save(player: Player) -> bool:
     return True
 
 
-IDLE_DAYS = 14
+IDLE_DAYS = data.IDLE_DAYS
 
 
 async def rankings(limit: int = 25) -> list[dict]:
@@ -127,7 +132,11 @@ async def rankings(limit: int = 25) -> list[dict]:
                    json_extract(p.climber, '$.level') AS level,
                    json_extract(p.climber, '$.xp') AS xp,
                    json_extract(p.climber, '$.calling') AS calling,
-                   json_extract(p.climber, '$.alive') AS alive
+                   json_extract(p.climber, '$.alive') AS alive,
+                   json_extract(p.climber, '$.room') AS room,
+                   json_extract(p.climber, '$.weapon') AS weapon,
+                   json_extract(p.climber, '$.armour') AS armour,
+                   p.last_day
             FROM climb_players p JOIN users u ON u.id = p.user_id
             WHERE p.last_seen >= datetime('now', '-{IDLE_DAYS} days')
             ORDER BY ascents DESC, level DESC, xp DESC, u.username COLLATE NOCASE
@@ -145,6 +154,72 @@ async def record_score(user_id: int, score: int, opponent: str, won: bool) -> No
         (user_id, score, opponent, int(won)),
     )
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# The Camp
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Sleeper:
+    """Another climber, as the Camp list needs to see them."""
+
+    user_id: int
+    username: str
+    player: Player
+    minutes_since_seen: float
+    days_since_joined: float
+    already_today: bool
+
+
+async def sleepers(attacker_id: int, today: date) -> list[Sleeper]:
+    """Every other climber, with what is needed to decide whether they can be robbed."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT p.*, u.username,
+                  (julianday('now') - julianday(p.last_seen)) * 1440.0 AS minutes_since_seen,
+                  julianday('now') - julianday(p.created_at) AS days_since_joined,
+                  EXISTS (SELECT 1 FROM climb_robberies r
+                          WHERE r.day = ? AND r.attacker_id = ? AND r.victim_id = p.user_id) AS already_today
+           FROM climb_players p JOIN users u ON u.id = p.user_id
+           WHERE p.user_id != ?""",
+        (today.isoformat(), attacker_id, attacker_id),
+    )
+    return [
+        Sleeper(
+            user_id=row["user_id"], username=row["username"], player=_from_row(row),
+            minutes_since_seen=row["minutes_since_seen"], days_since_joined=row["days_since_joined"],
+            already_today=bool(row["already_today"]),
+        )
+        for row in await cursor.fetchall()
+    ]
+
+
+async def note_robbery(day: date, attacker_id: int, victim_id: int) -> None:
+    db = await get_db()
+    await db.execute(
+        "INSERT OR IGNORE INTO climb_robberies (day, attacker_id, victim_id) VALUES (?, ?, ?)",
+        (day.isoformat(), attacker_id, victim_id),
+    )
+    await db.execute("DELETE FROM climb_robberies WHERE day < ?", (day.isoformat(),))
+    await db.commit()
+
+
+async def change(user_id: int, mutate) -> object:
+    """Load a player, apply ``mutate(player)``, and save, retrying if they moved meanwhile.
+
+    For the one case where a request changes somebody else's row. Returns
+    whatever ``mutate`` returned on the attempt that was saved, or None if the
+    player is gone.
+    """
+    for _ in range(6):
+        player = await load(user_id)
+        if player is None:
+            return None
+        result = mutate(player)
+        if await save(player):
+            return result
+    raise RuntimeError(f"could not update climber {user_id}: too much contention")
 
 
 # ---------------------------------------------------------------------------

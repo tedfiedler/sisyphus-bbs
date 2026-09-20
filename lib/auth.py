@@ -266,6 +266,9 @@ async def delete_user(user_id: int, reassign_channels_to: int | None = None):
                 (heir, user_id),
             )
 
+    await db.execute(
+        "DELETE FROM climb_robberies WHERE attacker_id = ? OR victim_id = ?", (user_id, user_id)
+    )
     for table in ("chat_messages", "game_scores", "login_days", "dm_channel_seen", "sessions",
                   "climb_players", "climb_news", "climb_wall"):
         await db.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))

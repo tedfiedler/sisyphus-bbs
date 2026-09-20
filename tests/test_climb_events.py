@@ -296,7 +296,7 @@ async def test_the_shepherds_fire(alice, dice):
         await tweak(alice["id"], rank=9)
         await act(client, "go:fire")
         html = unescape((await client.get(PAGE)).text)
-        assert offered(html) == ["knucklebones", "calling:torch", "calling:sandal", "go:slopes"]
+        assert offered(html) == ["knucklebones", "calling:torch", "calling:sandal", "go:others", "go:slopes"]
         assert "up to 60 drachmae a throw, 3 more today" in html
 
         dice(chance=[0.9])
@@ -311,7 +311,7 @@ async def test_the_shepherds_fire(alice, dice):
         assert (c.calling, c.rank) == (data.SANDAL, 4)
         html = unescape((await client.get(PAGE)).text)
         assert "you follow The Sandal, at rank 4" in html
-        assert offered(html) == ["knucklebones", "calling:spear", "calling:torch", "go:slopes"]
+        assert offered(html) == ["knucklebones", "calling:spear", "calling:torch", "go:others", "go:slopes"]
 
 
 def test_every_event_screen_has_distinct_hotkeys_and_ends_with_a_way_out():

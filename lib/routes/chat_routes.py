@@ -10,23 +10,59 @@ import json
 import logging
 import re
 
+from urllib.parse import urlsplit
+
 import anyio
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from lib import auth, chat
+from lib import auth, chat, config
 from lib.chat import chat_manager
 from lib.content_filter import contains_url
 from lib.deps import require_user, require_admin
 from lib.models import ChatMessage, validate
+from lib.ratelimit import RateLimiter
 from lib.templating import templates, _add_globals
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_CHANNEL_NAME_RE = re.compile(r"^[a-z0-9_-]+$")
+_CHANNEL_NAME_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
+_MAX_CHANNEL_DESCRIPTION = 256
+
+# Seconds between keepalive pings; the session is re-checked on the same beat.
+_PING_INTERVAL = 20
+
+# A 2,000-character message can grow sixfold when JSON-escaped; anything
+# beyond this is not a chat frame and is refused before it is parsed.
+_MAX_FRAME_CHARS = 16_384
+
+# Frames per user across all their sockets. Loose enough for fast typing and
+# channel hopping, tight enough that one account cannot flood a channel or
+# hammer the database through the socket.
+_ws_limiter = RateLimiter(max_events=20, window_seconds=10)
+
+
+def _origin_allowed(websocket: WebSocket) -> bool:
+    """Return True if the handshake came from one of our own pages.
+
+    WebSocket handshakes are not covered by CORS or by the CSRF token, and
+    the session cookie rides along on them, so any page the user visits
+    could otherwise open this socket as them and read their DMs. Browsers
+    always send ``Origin`` on a WebSocket handshake and scripts cannot forge
+    it; a missing header means a non-browser client, which carries no
+    ambient cookies to abuse.
+    """
+    origin = websocket.headers.get("origin")
+    if origin is None:
+        return True
+    origin = origin.strip().rstrip("/").lower()
+    if origin in config.ALLOWED_ORIGINS:
+        return True
+    host = websocket.headers.get("host", "").strip().lower()
+    return bool(host) and urlsplit(origin).netloc == host
 
 
 @router.get("/chat", response_class=HTMLResponse)
@@ -76,6 +112,7 @@ async def create_channel(
         return RedirectResponse("/chat?error=invalid_name", status_code=303)
     if name == "lobby":
         return RedirectResponse("/chat?error=reserved_name", status_code=303)
+    description = description.strip()[:_MAX_CHANNEL_DESCRIPTION]
     existing = await chat.get_channel(name)
     if existing:
         return RedirectResponse("/chat?error=channel_exists", status_code=303)
@@ -138,6 +175,10 @@ async def ws_chat(websocket: WebSocket):
     - ``{"type": "announcement", ...}`` — admin broadcast.
     - Regular chat message dicts.
     """
+    if not _origin_allowed(websocket):
+        # Closing before accept() refuses the handshake with a 403.
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     token = websocket.cookies.get("session_token")
     user = await auth.get_user_by_token(token) if token else None
@@ -158,6 +199,9 @@ async def ws_chat(websocket: WebSocket):
             """Read incoming WebSocket messages and dispatch by type."""
             while True:
                 data = await websocket.receive_text()
+                if len(data) > _MAX_FRAME_CHARS:
+                    await websocket.send_json({"type": "error", "message": "Message too large."})
+                    continue
                 try:
                     parsed = json.loads(data)
                 except json.JSONDecodeError:
@@ -168,8 +212,16 @@ async def ws_chat(websocket: WebSocket):
                     continue
                 if parsed.get("type") == "pong":
                     continue
+                limiter_key = str(user["id"])
+                if _ws_limiter.is_limited(limiter_key):
+                    await websocket.send_json({"type": "error", "message": "Slow down — too many messages."})
+                    continue
+                _ws_limiter.record(limiter_key)
                 if parsed.get("type") == "switch":
                     new_channel = parsed.get("channel", "lobby")
+                    if not isinstance(new_channel, str):
+                        await websocket.send_json({"type": "error", "message": "Malformed message."})
+                        continue
                     err = await chat.validate_channel(new_channel, user["id"])
                     if err:
                         await websocket.send_json({"type": "error", "message": err})
@@ -182,8 +234,10 @@ async def ws_chat(websocket: WebSocket):
                     state["channel"] = new_channel
                     state["queue"] = new_queue
                     chat_manager.unsubscribe(old_channel, old_queue)
-                    # Wake _send so it re-reads state["queue"]
-                    await old_queue.put(None)
+                    # Wake _send so it re-reads state["queue"]. If the old
+                    # queue is full _send is not parked on it, so there is
+                    # nothing to wake and the dropped sentinel is harmless.
+                    chat_manager.offer(old_queue, None)
                     # Send history for the new channel
                     history = await chat_manager.recent_messages(new_channel)
                     await websocket.send_json({"type": "history", "messages": history})
@@ -211,9 +265,20 @@ async def ws_chat(websocket: WebSocket):
                 await websocket.send_json(msg)
 
         async def _ping():
-            """Send periodic keepalive pings to detect stale connections."""
+            """Send periodic keepalive pings and re-check the session.
+
+            The cookie is only presented at the handshake, so without this a
+            socket opened before a logout, session expiry, or account
+            deletion would go on reading and posting indefinitely. The
+            refresh also picks up a change of access level.
+            """
             while True:
-                await asyncio.sleep(20)
+                await asyncio.sleep(_PING_INTERVAL)
+                current = await auth.get_user_by_token(token)
+                if current is None:
+                    await websocket.close(code=4001)
+                    return
+                user.update(current)
                 await websocket.send_json({"type": "ping"})
 
         # Run the three loops under one cancel scope. asyncio.gather would

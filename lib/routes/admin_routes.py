@@ -33,7 +33,9 @@ async def admin_promote(request: Request, user_id: int, user: dict = Depends(req
     if not auth.is_superadmin(user):
         return HTMLResponse("Forbidden", status_code=403)
     target = await auth.get_user(user_id)
-    if target:
+    # Only ever raises a regular user: "promoting" a superadmin would
+    # silently strip them down to admin.
+    if target and target["access_level"] == 0:
         await auth.set_access_level(user_id, 1)
     return RedirectResponse("/admin", status_code=302)
 
@@ -44,7 +46,9 @@ async def admin_demote(request: Request, user_id: int, user: dict = Depends(requ
     if not auth.is_superadmin(user):
         return HTMLResponse("Forbidden", status_code=403)
     target = await auth.get_user(user_id)
-    if target:
+    # Superadmins are out of reach, including the caller: demoting the last
+    # one would leave nobody able to manage admins at all.
+    if target and target["access_level"] == 1:
         await auth.set_access_level(user_id, 0)
     return RedirectResponse("/admin", status_code=302)
 

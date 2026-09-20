@@ -5,6 +5,7 @@ import pytest
 
 from lib import auth
 from lib import boards
+from lib import config
 from lib import files as file_mod
 from lib.chat import chat_manager, create_channel, delete_message, get_channel
 from lib.db import get_db
@@ -112,7 +113,7 @@ async def test_delete_file():
     await auth.register_user("admin", "password123")
     user = await auth.authenticate("admin", "password123")
     # Create a temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as f:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", dir=config.FILE_STORE) as f:
         f.write(b"test data")
         path = f.name
     file_id = await file_mod.add_file("test.txt", path, user["id"], 9, "general", "test file")
@@ -214,7 +215,7 @@ async def test_delete_user_with_content():
     await boards.toggle_like(liked_by_target, target["id"])
 
     await chat_manager.broadcast("lobby", "spammer", "buy my stuff")
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as f:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", dir=config.FILE_STORE) as f:
         f.write(b"junk")
         upload_path = f.name
     await file_mod.add_file("junk.txt", upload_path, target["id"], 4, "general", "")

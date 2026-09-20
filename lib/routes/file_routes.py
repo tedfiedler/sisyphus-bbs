@@ -15,11 +15,16 @@ from lib import config
 from lib import files as file_mod
 from lib.deps import require_file_access
 from lib.models import FileUploadMeta, validate
+from lib.ratelimit import RateLimiter
 from lib.templating import templates, _add_globals
 
 router = APIRouter()
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_UPLOAD_BYTES = config.MAX_UPLOAD_BYTES
+
+# Uploads per user per hour, so one account cannot fill the disk ten
+# megabytes at a time.
+_upload_limiter = RateLimiter(max_events=20, window_seconds=3600)
 ALLOWED_EXTENSIONS = {
     '.txt', '.md', '.pdf', '.doc', '.docx', '.csv', '.json', '.xml',
     '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',
@@ -53,6 +58,9 @@ async def file_upload(
     not in ``ALLOWED_EXTENSIONS``. The filename and area are sanitized
     by ``save_upload`` to prevent path traversal.
     """
+    limiter_key = str(user["id"])
+    if _upload_limiter.is_limited(limiter_key):
+        return RedirectResponse("/files?error=too_many_uploads", status_code=303)
     meta, error = validate(FileUploadMeta, area=area, description=description)
     if error:
         return RedirectResponse("/files?error=invalid_metadata", status_code=303)
@@ -66,10 +74,11 @@ async def file_upload(
     if len(data) > MAX_UPLOAD_BYTES:
         return RedirectResponse("/files?error=file_too_large", status_code=303)
     try:
-        path, size = file_mod.save_upload(file.filename, data, area)
+        safe_filename = file_mod.sanitize_filename(file.filename)
+        path, size = file_mod.save_upload(safe_filename, data, area)
     except ValueError:
         return RedirectResponse("/files?error=invalid_filename", status_code=303)
-    safe_filename = Path(file.filename).name
+    _upload_limiter.record(limiter_key)
     await file_mod.add_file(safe_filename, path, user["id"], size, area, description)
     return RedirectResponse("/files", status_code=302)
 

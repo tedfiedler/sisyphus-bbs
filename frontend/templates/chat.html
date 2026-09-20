@@ -83,7 +83,7 @@ const msgInput = document.getElementById('msg-input');
 const chatHeading = document.getElementById('chat-heading');
 const isAdmin = {{ 'true' if user.access_level >= 1 else 'false' }};
 const csrfToken = '{{ csrf_token }}';
-let currentChannel = '{{ current_channel }}';
+let currentChannel = {{ current_channel|tojson }};
 let ws = null;
 let connected = false;
 let reconnectDelay = 1000;
@@ -125,8 +125,13 @@ function connect() {
         appendMessage(data);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (e) => {
         connected = false;
+        if (e.code === 4001) {
+            // Session ended (logout, expiry); reconnecting would only loop.
+            location.href = '/';
+            return;
+        }
         appendSystem('Disconnected. Reconnecting...');
         scheduleReconnect();
     };

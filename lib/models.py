@@ -35,10 +35,17 @@ def _clean_username(value: str) -> str:
     return value
 
 
+MIN_PASSWORD_LENGTH = 8
+
+
 def _clean_password(value: str) -> str:
-    """Validate a password against the length limits bcrypt can accept."""
-    if len(value) < 4:
-        raise ValueError("Password must be at least 4 characters.")
+    """Validate a new password's length.
+
+    The minimum only applies at registration; :class:`UserLogin` has none,
+    so accounts created under the old four-character rule can still sign in.
+    """
+    if len(value) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
     if len(value.encode("utf-8")) > MAX_PASSWORD_BYTES:
         raise ValueError(f"Password must be at most {MAX_PASSWORD_BYTES} bytes.")
     return value

@@ -10,3 +10,6 @@ file_store/
 .pytest_cache/
 .DS_Store
 certs/
+.env
+.venv/
+.idea/

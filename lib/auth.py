@@ -4,14 +4,16 @@ Provide password hashing, session management, and role-based access control
 backed by an SQLite database.
 """
 
-import os
+import hashlib
 import secrets
+import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 
 from lib import config
 from lib.db import get_db
+from lib.files import unlink_stored
 
 
 def hash_password(password: str) -> str:
@@ -32,26 +34,52 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-async def register_user(username: str, password: str, email: str = "") -> dict | None:
-    """Register a new user and return their info, or None on failure.
+# Checked when the username does not exist, so a miss costs the same bcrypt
+# round as a wrong password and response time does not reveal which names
+# are registered.
+_DUMMY_HASH = hash_password(secrets.token_urlsafe(16))
 
-    Promote the first registered user to superadmin automatically.
+
+def _hash_token(token: str) -> str:
+    """Return the digest a session token is stored under.
+
+    Only the digest is kept, so a copy of the database (a backup, a stray
+    dump) does not hand out live sessions. Tokens are 256 bits of randomness,
+    so a plain SHA-256 is enough; there is nothing to brute-force.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+async def register_user(username: str, password: str, email: str = "") -> dict | None:
+    """Register a new user and return their info, or None if the name is taken.
+
+    Promote the first registered user to superadmin automatically. The
+    "is this the first user" decision and the name check both live inside
+    the INSERT itself: with an ``await`` between a separate COUNT and INSERT,
+    two concurrent signups on an empty database could each be made
+    superadmin. Names are compared case-insensitively so ``Admin`` cannot be
+    registered alongside ``admin`` to impersonate them.
     """
     db = await get_db()
+    pw_hash = hash_password(password)
     try:
-        pw_hash = hash_password(password)
-        # First user becomes superadmin
-        count_cursor = await db.execute("SELECT COUNT(*) as cnt FROM users")
-        count_row = await count_cursor.fetchone()
-        access_level = 2 if count_row["cnt"] == 0 else 0
         cursor = await db.execute(
-            "INSERT INTO users (username, password_hash, email, access_level) VALUES (?, ?, ?, ?)",
-            (username, pw_hash, email, access_level),
+            """INSERT INTO users (username, password_hash, email, access_level)
+               SELECT ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM users) THEN 0 ELSE 2 END
+               WHERE NOT EXISTS (
+                   SELECT 1 FROM users WHERE username = ? COLLATE NOCASE
+               )""",
+            (username, pw_hash, email, username),
         )
-        await db.commit()
-        return {"id": cursor.lastrowid, "username": username, "access_level": access_level}
-    except Exception:
+    except sqlite3.IntegrityError:
         return None
+    if cursor.rowcount == 0:
+        return None
+    user_id = cursor.lastrowid
+    await db.commit()
+    cursor = await db.execute("SELECT access_level FROM users WHERE id = ?", (user_id,))
+    row = await cursor.fetchone()
+    return {"id": user_id, "username": username, "access_level": row["access_level"]}
 
 
 async def authenticate(username: str, password: str) -> dict | None:
@@ -63,6 +91,7 @@ async def authenticate(username: str, password: str) -> dict | None:
     )
     row = await cursor.fetchone()
     if row is None:
+        verify_password(password, _DUMMY_HASH)
         return None
     if not verify_password(password, row["password_hash"]):
         return None
@@ -104,7 +133,7 @@ async def create_session(user_id: int) -> str:
     )
     await db.execute(
         "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)",
-        (user_id, token, expires.isoformat()),
+        (user_id, _hash_token(token), expires.isoformat()),
     )
     await db.commit()
     return token
@@ -117,7 +146,7 @@ async def get_user_by_token(token: str) -> dict | None:
         """SELECT u.id, u.username, u.access_level
            FROM sessions s JOIN users u ON s.user_id = u.id
            WHERE s.token = ? AND s.expires_at > ?""",
-        (token, datetime.now(timezone.utc).isoformat()),
+        (_hash_token(token), datetime.now(timezone.utc).isoformat()),
     )
     row = await cursor.fetchone()
     if row is None:
@@ -128,7 +157,7 @@ async def get_user_by_token(token: str) -> dict | None:
 async def delete_session(token: str):
     """Delete a session by its token, effectively logging the user out."""
     db = await get_db()
-    await db.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    await db.execute("DELETE FROM sessions WHERE token = ?", (_hash_token(token),))
     await db.commit()
 
 
@@ -187,10 +216,7 @@ async def delete_user(user_id: int, reassign_channels_to: int | None = None):
     # Uploaded files: remove from disk first, then drop the rows.
     cursor = await db.execute("SELECT path FROM files WHERE uploader_id = ?", (user_id,))
     for row in await cursor.fetchall():
-        try:
-            os.unlink(row["path"])
-        except OSError:
-            pass
+        unlink_stored(row["path"])
     await db.execute("DELETE FROM files WHERE uploader_id = ?", (user_id,))
 
     # Likes must go before the posts they point at.

@@ -12,9 +12,20 @@ from lib.content_filter import contains_url
 from lib.db import get_db
 from lib.deps import require_user, require_admin
 from lib.models import BoardCreate, PostCreate, ThreadCreate, validate
+from lib.ratelimit import RateLimiter
 from lib.templating import templates, _add_globals
 
 router = APIRouter()
+
+# Threads and replies per user, over five minutes. Far above what a person
+# types, low enough that a script cannot bury a board. Admins are exempt.
+_post_limiter = RateLimiter(max_events=30, window_seconds=300)
+_FLOOD_ERROR = "You are posting too quickly. Try again in a few minutes."
+
+
+def _posting_too_fast(user: dict) -> bool:
+    """Return True if *user* has used up their posting budget."""
+    return not auth.is_admin(user) and _post_limiter.is_limited(str(user["id"]))
 
 
 @router.get("/boards", response_class=HTMLResponse)
@@ -52,6 +63,8 @@ async def thread_create(request: Request, board_id: int, subject: str = Form(), 
     form, error = validate(ThreadCreate, subject=subject, body=body)
     if not error and not auth.is_admin(user) and (contains_url(subject) or contains_url(body)):
         error = "URLs are not allowed in posts."
+    if not error and _posting_too_fast(user):
+        error = _FLOOD_ERROR
     if error:
         board = await boards.get_board(board_id)
         thread_list = await boards.list_threads(board_id)
@@ -64,6 +77,7 @@ async def thread_create(request: Request, board_id: int, subject: str = Form(), 
             }),
             status_code=400,
         )
+    _post_limiter.record(str(user["id"]))
     thread_id = await boards.create_thread(board_id, form.subject, user["id"], form.body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)
 
@@ -102,6 +116,8 @@ async def thread_reply(request: Request, thread_id: int, body: str = Form(), use
     form, error = validate(PostCreate, body=body)
     if not error and not auth.is_admin(user) and contains_url(body):
         error = "URLs are not allowed in posts."
+    if not error and _posting_too_fast(user):
+        error = _FLOOD_ERROR
     if error:
         board = await boards.get_board(thread["board_id"])
         post_list = await boards.list_posts(thread_id, user["id"])
@@ -114,5 +130,6 @@ async def thread_reply(request: Request, thread_id: int, body: str = Form(), use
             }),
             status_code=400,
         )
+    _post_limiter.record(str(user["id"]))
     await boards.create_post(thread_id, user["id"], form.body)
     return RedirectResponse(f"/thread/{thread_id}", status_code=302)

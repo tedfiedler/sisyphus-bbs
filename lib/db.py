@@ -152,6 +152,14 @@ async def _migrate(db: aiosqlite.Connection):
     if "game" not in gs_columns:
         await db.execute("ALTER TABLE game_scores ADD COLUMN game TEXT NOT NULL DEFAULT 'mille'")
 
+    # Session tokens are stored as SHA-256 hex digests. Rows written before
+    # that hold the raw token, which can no longer match a lookup; drop them
+    # so usable credentials do not sit in the table until they expire.
+    await db.execute("DELETE FROM sessions WHERE length(token) != 64")
+    # The DELETE opens a transaction, and journal_mode cannot be changed
+    # inside one.
+    await db.commit()
+
 
 async def get_db() -> aiosqlite.Connection:
     """Return the shared database connection, creating it on first call.
@@ -161,13 +169,20 @@ async def get_db() -> aiosqlite.Connection:
     """
     global _db
     if _db is None:
-        _db = await aiosqlite.connect(config.DB_PATH)
-        _db.row_factory = aiosqlite.Row
-        await _db.executescript(SCHEMA)
-        await _migrate(_db)
-        await _db.execute("PRAGMA journal_mode=WAL")
-        await _db.execute("PRAGMA foreign_keys=ON")
-        await _db.commit()
+        db = await aiosqlite.connect(config.DB_PATH)
+        try:
+            db.row_factory = aiosqlite.Row
+            await db.executescript(SCHEMA)
+            await _migrate(db)
+            await db.execute("PRAGMA journal_mode=WAL")
+            await db.execute("PRAGMA foreign_keys=ON")
+            await db.commit()
+        except BaseException:
+            # A half-initialized connection must not become the shared one,
+            # and its worker thread would keep the process from exiting.
+            await db.close()
+            raise
+        _db = db
     return _db
 
 

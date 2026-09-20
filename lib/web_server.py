@@ -8,7 +8,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from lib import auth as _auth
 from lib import chat as _chat
 from lib import config
+from lib.bodylimit import BodySizeLimitMiddleware, upload_limit
 from lib.csrf import CSRFMiddleware
+from lib.proxy import is_https
 # Re-exported so existing imports from this module keep working.
 from lib.templating import templates, _add_globals  # noqa: F401
 
@@ -47,12 +49,39 @@ class _DMCheckMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_DMCheckMiddleware)
 
 
+# The templates use inline scripts, handlers, and styles, so 'unsafe-inline'
+# has to stay until those move to static files; the policy does not stop an
+# injected inline script. What it does do is keep everything same-origin:
+# no third-party script or frame can be loaded, forms cannot post off-site,
+# and an injected script has nowhere external to send what it reads.
+_CSP = "; ".join((
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+))
+
+
 class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response: Response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = _CSP
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if is_https(request):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
+        # Pages are per-user; keep them out of shared and on-disk caches so
+        # they cannot be read back after logout.
+        if not request.url.path.startswith("/static"):
+            response.headers.setdefault("Cache-Control", "no-store")
         return response
 
 
@@ -61,6 +90,13 @@ app.add_middleware(_SecurityHeadersMiddleware)
 # Added last so it runs outermost: an unsafe request without a valid token is
 # rejected before any session or database work happens.
 app.add_middleware(CSRFMiddleware)
+
+# Outside even CSRF, which buffers the whole body to find its token: the size
+# cap has to apply before that read, and to unauthenticated requests too.
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    path_limits={"/files/upload": upload_limit(config.MAX_UPLOAD_BYTES)},
+)
 
 
 

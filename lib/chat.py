@@ -7,6 +7,12 @@ from datetime import datetime, timezone
 from lib.db import get_db
 
 
+# Messages a subscriber may have waiting before new ones are dropped for it.
+# A client that stops reading (stalled connection, deliberate or not) would
+# otherwise accumulate every message sent to its channel until it went away.
+MAX_QUEUED_MESSAGES = 256
+
+
 class ChatManager:
     """Manage pub/sub message delivery and persistence for chat channels."""
 
@@ -16,9 +22,22 @@ class ChatManager:
 
     def subscribe(self, channel: str = "lobby") -> asyncio.Queue:
         """Create and return a new message queue subscribed to the given channel."""
-        q: asyncio.Queue = asyncio.Queue()
+        q: asyncio.Queue = asyncio.Queue(maxsize=MAX_QUEUED_MESSAGES)
         self._subscribers.setdefault(channel, []).append(q)
         return q
+
+    @staticmethod
+    def offer(queue: asyncio.Queue, payload) -> None:
+        """Queue *payload* without waiting; a full queue drops it.
+
+        Never blocking matters as much as the bound: one stalled subscriber
+        must not hold up delivery to everyone else. Dropped messages are
+        still in the database and come back with the next history load.
+        """
+        try:
+            queue.put_nowait(payload)
+        except asyncio.QueueFull:
+            pass
 
     def unsubscribe(self, channel: str, queue: asyncio.Queue):
         """Remove a queue from a channel's subscriber list."""
@@ -39,7 +58,7 @@ class ChatManager:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         for q in self._subscribers.get(channel, []):
-            await q.put(payload)
+            self.offer(q, payload)
 
     async def _store_message(self, channel: str, username: str, message: str) -> int | None:
         """Save a chat message to the database and return its row ID, or None if the user is unknown."""
@@ -71,7 +90,7 @@ class ChatManager:
                 qid = id(q)
                 if qid not in seen:
                     seen.add(qid)
-                    await q.put(payload)
+                    self.offer(q, payload)
 
     async def recent_messages(self, channel: str = "lobby", limit: int = 50) -> list[dict]:
         """Fetch the most recent messages for a channel, ordered oldest-first."""

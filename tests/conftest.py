@@ -10,15 +10,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Use a temp database for tests
 os.environ["SISYPHUS_DB"] = os.path.join(tempfile.gettempdir(), "sisyphus_test.db")
+# ...and a throwaway file store, so upload tests never touch the real one.
+os.environ["SISYPHUS_FILES"] = tempfile.mkdtemp(prefix="sisyphus_test_files_")
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiters():
     """Rate limiters are module-level, so clear them between tests."""
-    from lib.routes import auth_routes
+    from lib.ratelimit import RateLimiter
+    from lib.routes import auth_routes, board_routes, chat_routes, file_routes
 
-    for limiter in (auth_routes._login_limiter, auth_routes._register_limiter):
-        limiter._events.clear()
+    # Found by type rather than by name, so a limiter added to one of these
+    # modules later is reset without anyone remembering to list it here.
+    for module in (auth_routes, board_routes, chat_routes, file_routes):
+        for value in vars(module).values():
+            if isinstance(value, RateLimiter):
+                value._events.clear()
     yield
 
 

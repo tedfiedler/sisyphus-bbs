@@ -14,6 +14,7 @@ from lib import auth
 from lib.content_filter import contains_url
 from lib.deps import require_user
 from lib.models import ProfileText, UserCreate, UserLogin, validate
+from lib.proxy import is_https
 from lib.ratelimit import RateLimiter, client_key
 from lib.templating import templates, _add_globals
 
@@ -26,6 +27,17 @@ _login_limiter = RateLimiter(max_events=5, window_seconds=300)
 # so one address cannot mass-create accounts. Kept loose enough that a shared
 # address behind NAT is not locked out by a few neighbours signing up.
 _register_limiter = RateLimiter(max_events=10, window_seconds=3600)
+
+
+def _session_redirect(request: Request, token: str) -> RedirectResponse:
+    """Build the post-login redirect carrying the session cookie."""
+    resp = RedirectResponse("/home", status_code=302)
+    resp.set_cookie(
+        "session_token", token,
+        httponly=True, secure=is_https(request), samesite="Lax",
+        max_age=config.SESSION_EXPIRY_HOURS * 3600,
+    )
+    return resp
 
 
 def _is_recently_seen(profile_user: dict | None) -> bool:
@@ -70,12 +82,11 @@ async def register(request: Request, username: str = Form(), password: str = For
             "login.html", _add_globals(request, {"error": "Username already taken"}),
             status_code=400,
         )
-    user = await auth.authenticate(username, password)
+    # authenticate() rather than using `result` directly: it also records the
+    # first login day and last_login.
+    user = await auth.authenticate(username, password) or result
     token = await auth.create_session(user["id"])
-    resp = RedirectResponse("/home", status_code=302)
-    is_https = request.url.scheme == "https"
-    resp.set_cookie("session_token", token, httponly=True, secure=is_https, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
-    return resp
+    return _session_redirect(request, token)
 
 
 @router.post("/login")
@@ -107,10 +118,7 @@ async def login(request: Request, username: str = Form(), password: str = Form()
         )
     _login_limiter.clear(client_ip)
     token = await auth.create_session(user["id"])
-    resp = RedirectResponse("/home", status_code=302)
-    is_https = request.url.scheme == "https"
-    resp.set_cookie("session_token", token, httponly=True, secure=is_https, samesite="Lax", max_age=config.SESSION_EXPIRY_HOURS * 3600)
-    return resp
+    return _session_redirect(request, token)
 
 
 @router.get("/home", response_class=HTMLResponse)

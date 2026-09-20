@@ -30,6 +30,12 @@ async def main():
     """
     setup_logging()
 
+    if config.SECRET_KEY == config.DEFAULT_SECRET_KEY:
+        logger.warning(
+            "SISYPHUS_SECRET is not set; using the built-in default key. "
+            "Set it to a long random value in the environment or .env."
+        )
+
     # Initialize database
     await get_db()
     logger.info("Database initialized at %s", config.DB_PATH)
@@ -48,6 +54,9 @@ async def main():
         host=config.WEB_HOST,
         port=config.WEB_PORT,
         log_level="info",
+        # Chat frames are a few KB at most; the 16 MB default lets a client
+        # make the server buffer and parse far more than it will ever accept.
+        ws_max_size=64 * 1024,
         **ssl_args,
     )
     server = uvicorn.Server(uv_config)

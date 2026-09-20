@@ -2,24 +2,33 @@
 {% block title %}Login{% endblock %}
 {% block content %}
 <div class="login-box">
-    <pre>
- ___ ___ _____   _____ _  _ _   _ ___
-/ __|_ _/ __\ \ / / _ \ || | | | / __|
-\__ \| |\__ \\ V /|  _/ __ | |_| \__ \
-|___/___|___/ |_| |_| |_||_|\___/|___/
+    <pre role="img" aria-label="Sisyphus bulletin board system: a figure pushing a boulder up a hillside under the stars">{# login-art:begin #}{% raw %}    <span class="art-title">____   ___  ____  __   __ ____   _   _  _   _  ____</span>
+   <span class="art-title">/ ___| |_ _|/ ___| \ \ / /|  _ \ | | | || | | |/ ___|</span>
+   <span class="art-title">\___ \  | | \___ \  \ V / | |_) || |_| || | | |\___ \</span>
+    <span class="art-title">___) | | |  ___) |  | |  |  __/ |  _  || |_| | ___) |</span>
+   <span class="art-title">|____/ |___||____/   |_|  |_|    |_| |_| \___/ |____/</span>
+         <span class="art-sub">b u l l e t i n   b o a r d   s y s t e m</span>
 
-            . * .
-          * BBS *
-            . * .
-           .@@@.
-        o  @@@@@
-       /|> @@@@@
-       /\  @@@/
-      /  @@@@/
-     /  @@@/
-    /  @@/
-   /__@/
-    </pre>
+    <span class="art-star">*                                   </span><span class="art-stone">_..-------.._    </span><span class="art-star">.</span>
+                 <span class="art-star">.                   </span><span class="art-stone">,-&#x27;             `-.</span>
+                        <span class="art-star">*          </span><span class="art-stone">,&#x27;       .           `. </span><span class="art-star">*</span>
+          <span class="art-star">.                       </span><span class="art-stone">/    &#x27;             ,    \</span>
+                   <span class="art-star">.             </span><span class="art-stone">|                         |</span>
+  <span class="art-star">.                         </span><span class="art-man">__   </span><span class="art-stone">|         ,               |</span>
+                           <span class="art-man">(  )  </span><span class="art-stone">|  .                 &#x27;    |</span>
+             <span class="art-star">.             </span><span class="art-man">_\/____</span><span class="art-stone">\                       /</span>
+                          <span class="art-man">/ /----&#x27; </span><span class="art-stone">`.        &#x27;          ,&#x27;</span>
+     <span class="art-star">*                   </span><span class="art-man">/ /         </span><span class="art-stone">`-._           _.-&#x27;</span>
+                        <span class="art-man">/_/         </span><span class="art-hill">_.-&#x27; </span><span class="art-stone">`--.....--&#x27;</span>
+         <span class="art-star">.              </span><span class="art-man">/ \     </span><span class="art-hill">_.-&#x27;</span>
+                       <span class="art-man">/   \</span><span class="art-hill">_.-&#x27;</span>
+                      <span class="art-man">/ </span><span class="art-hill">_.-</span><span class="art-man">|</span>
+                    <span class="art-man">_/</span><span class="art-hill">-&#x27;</span>
+                <span class="art-hill">_.-&#x27;</span>
+            <span class="art-hill">_.-&#x27;</span>
+        <span class="art-hill">_.-&#x27;</span>
+    <span class="art-hill">_.-&#x27;</span>
+<span class="art-hill">_.-&#x27;</span>{% endraw %}{# login-art:end #}</pre>
 
     {% if error %}
     <div class="error">{{ error }}</div>

@@ -136,13 +136,29 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
     margin: 60px auto;
 }
 
+/* The opening-screen art (admin/login_art.py). Centre the block, never the
+   lines: text-align: center shifts every line independently, which shears the
+   letters of the title and turns a hillside into a pole. And not
+   display: table, inside which browsers drop the newlines between the spans. */
 .login-box pre {
-    color: var(--accent);
-    font-size: 11px;
+    width: max-content;
+    max-width: 100%;
+    margin: 0 auto 20px;
+    overflow-x: auto;
+    text-align: left;
+    color: var(--dim);
+    /* The art is 60 columns wide, and a monospace column is about 0.61em. At
+       11px that is some 400px: the width of the login box, and too wide for a
+       phone. So the type shrinks until all 60 columns fit the screen, less
+       the page's 20px gutters. */
+    font-size: min(11px, calc((100vw - 40px) / 36.6));
     line-height: 1.2;
-    margin-bottom: 20px;
-    text-align: center;
 }
+.art-title { color: var(--accent); }
+.art-sub, .art-star { color: var(--dim); }
+.art-hill { color: var(--fg); }
+.art-stone { color: var(--warn); }
+.art-man { color: #fff; }
 
 .tabs {
     display: flex;

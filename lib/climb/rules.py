@@ -110,6 +110,16 @@ def title(ascents: int) -> str:
     return next(name for needed, name in data.TITLES if ascents >= needed)
 
 
+def renown(c: Climber) -> int:
+    """One number for the BBS's score table: any ascent outranks any level."""
+    return c.ascents * (data.LEVELS + 1) * 100 + c.level * 100
+
+
+def heads_left(fight: "Fight") -> int:
+    """Ladon has a hundred heads; this many are still looking at you."""
+    return max(1, -(-100 * fight.foe_hp // fight.foe.hp)) if fight.foe_hp > 0 else 0
+
+
 def xp_to_next(level: int) -> int | None:
     """XP needed to face this band's gatekeeper; None at the top."""
     return data.XP_TO_NEXT[level - 1] if level < data.LEVELS else None

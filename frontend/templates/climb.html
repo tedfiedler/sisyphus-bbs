@@ -23,6 +23,26 @@
         {% for line in screen.lines %}<p>{{ line }}</p>{% endfor %}
     </div>
 
+    {% if stele is defined %}
+    {% if stele %}
+    <table class="climb-stele">
+        <tr><th>#</th><th>Climber</th><th>Ascents</th><th>Where</th><th>Calling</th><th></th></tr>
+        {% for row in stele %}
+        <tr{% if row.username == user.username %} class="c-sky"{% endif %}>
+            <td>{{ loop.index }}</td>
+            <td>{{ row.username }} <span class="c-dim">{{ row.title }}</span></td>
+            <td class="c-gold">{{ row.ascents }}</td>
+            <td>{{ row.band }} <span class="c-dim">({{ row.level }})</span></td>
+            <td>{{ row.calling }}</td>
+            <td>{% if not row.alive %}<span class="c-blood">dead until dawn</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="c-dim">{{ stele_empty }}</p>
+    {% endif %}
+    {% endif %}
+
     {% if screen.choices %}
     <div class="climb-choices">
         {% for choice in screen.choices %}

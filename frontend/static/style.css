@@ -397,3 +397,5 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
 .climb-choice button { padding: 10px 14px; text-transform: none; }
 .climb-amount { width: 9ch; margin-bottom: 0; }
 .climb-sheet { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--border); }
+.climb-stele { margin-top: 10px; font-size: 13px; }
+.climb-stele tr.c-sky td { color: var(--accent); }

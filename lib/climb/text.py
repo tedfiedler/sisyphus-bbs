@@ -190,3 +190,39 @@ GATEKEEPERS = (
      "Aigle hops down and unlatches a gate you had not seen. \"I will not wish you luck. Luck is not what he respects.\"",
      "You wake on the sand. Aigle's note: \"You are nearly what the garden needs. Nearly gets eaten.\""),
 )
+
+# ---------------------------------------------------------------------------
+# The Garden
+# ---------------------------------------------------------------------------
+
+SEEK_GARDEN = "Past the wall, through the gate Aigle showed you, the garden is very quiet."
+GARDEN_TRIED = "You have been to the garden once today. Nobody goes twice."
+LADON_OPENS = (
+    "The tree is smaller than you expected, and the apples brighter. What you took "
+    "for its roots uncoils. A hundred heads turn, unhurried, to look at you.",
+)
+LADON_HEADS = "Ladon: {heads} of a hundred heads still watching you."
+LADON_ONE_HEAD = "Ladon: one head left, and it has stopped being unhurried."
+LADON_WINS = "The last thing you see is how many of him there are."
+
+ASCENT = (
+    "The last head sinks into the grass. It is suddenly possible to hear bees.",
+    "You reach up and take an apple. It is warm, and heavier than gold should be.",
+    "You sit down under the tree to look at it, just for a moment.",
+    "When you wake it is evening and you are in the Foothills, in a wool cloak, "
+    "with an olive branch across your knees. The apple is gone; the mountain is "
+    "exactly where it was. Somewhere above, a great many heads are growing back.",
+    "You find that you are smiling.",
+)
+ASCENT_COUNT = "That is ascent number {n}. In Ephyra they will call you {title}."
+SUMMIT_REST = "Tomorrow, the climb. Today you have done enough."
+
+# ---------------------------------------------------------------------------
+# The Stele
+# ---------------------------------------------------------------------------
+
+STELE = (
+    "The Stele stands at the north end of the Agora, where the path begins. Names "
+    "are cut into it, and recut, as climbers pass one another on the way up.",
+)
+STELE_EMPTY = "The stone is blank. Somebody has to be first."

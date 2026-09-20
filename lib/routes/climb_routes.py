@@ -11,7 +11,7 @@ import secrets
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from lib.climb import clock, data, scenes, store, text
+from lib.climb import clock, data, rules, scenes, store, text
 from lib.deps import require_user
 from lib.templating import templates, _add_globals
 
@@ -43,6 +43,13 @@ async def climb_page(request: Request, user: dict = Depends(require_user)):
             "screen": scenes.screen(player), "status": scenes.status(player),
             "notice": player.notice, "turn": player.turn,
         }
+        if player.scene == scenes.STELE and player.climber.alive:
+            context["stele"] = [
+                {**row, "title": rules.title(row["ascents"]), "band": data.BANDS[row["level"] - 1],
+                 "calling": data.CALLINGS[row["calling"]][0]}
+                for row in await store.rankings()
+            ]
+            context["stele_empty"] = text.STELE_EMPTY
     return templates.TemplateResponse(
         "climb.html",
         _add_globals(request, {"user": user, "game_title": text.TITLE, "credit": data.CREDIT, **context}),
@@ -81,5 +88,10 @@ async def climb_act(
         scenes.act(rng, player, action, amount)
     except scenes.NotOffered:
         return _back()
-    await store.save(player)
+    if await store.save(player):
+        # Only once the action has really happened does the rest of the BBS hear of it.
+        for kind, beaten in player.happenings:
+            await store.record_score(
+                user["id"], rules.renown(player.climber), beaten, won=kind == scenes.ASCENDED,
+            )
     return _back()

@@ -23,6 +23,10 @@ class Player:
     fight: rules.Fight | None = None
     notice: list[str] = field(default_factory=list)      # what the last action looked like
     last_day: date | None = None
+    # Things the rest of the BBS should hear about (a level gained, an ascent).
+    # Filled by scenes.act, acted on by the route once the save has succeeded,
+    # never stored.
+    happenings: list[tuple[str, str]] = field(default_factory=list)
 
 
 def _known(cls, values: dict) -> dict:
@@ -107,6 +111,38 @@ async def save(player: Player) -> bool:
         return False
     player.turn += 1
     return True
+
+
+IDLE_DAYS = 14
+
+
+async def rankings(limit: int = 25) -> list[dict]:
+    """The Stele: climbers seen in the last fortnight, most accomplished first."""
+    db = await get_db()
+    cursor = await db.execute(
+        f"""SELECT u.username,
+                   json_extract(p.climber, '$.ascents') AS ascents,
+                   json_extract(p.climber, '$.level') AS level,
+                   json_extract(p.climber, '$.xp') AS xp,
+                   json_extract(p.climber, '$.calling') AS calling,
+                   json_extract(p.climber, '$.alive') AS alive
+            FROM climb_players p JOIN users u ON u.id = p.user_id
+            WHERE p.last_seen >= datetime('now', '-{IDLE_DAYS} days')
+            ORDER BY ascents DESC, level DESC, xp DESC, u.username COLLATE NOCASE
+            LIMIT ?""",
+        (limit,),
+    )
+    return [dict(row) for row in await cursor.fetchall()]
+
+
+async def record_score(user_id: int, score: int, opponent: str, won: bool) -> None:
+    """Write to the BBS-wide score table, which is what 'has played a game' reads."""
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO game_scores (user_id, game, score, opponent, won) VALUES (?, 'climb', ?, ?, ?)",
+        (user_id, score, opponent, int(won)),
+    )
+    await db.commit()
 
 
 async def delete(user_id: int) -> None:

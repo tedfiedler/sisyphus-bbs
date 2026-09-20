@@ -98,8 +98,6 @@ def _run_cpu_turn(game):
 
         if card[0] == "hazard":
             safety = SAFETY_FOR[card[1]]
-            if ("safety", safety) in game.cpu.hand:
-                pass
             if ("safety", safety) in game.human.hand:
                 game.coup_fourre_pending = card[1]
                 return

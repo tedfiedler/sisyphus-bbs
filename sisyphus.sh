@@ -2,8 +2,15 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/log/sisyphus.log"
-WEB_PORT=8000
-SSH_PORT=2222
+WEB_PORT="${SISYPHUS_WEB_PORT:-8000}"
+
+# Prefer the project's virtualenv, where requirements.txt was installed;
+# fall back to whatever python3 is on PATH.
+if [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
+    PYTHON="$SCRIPT_DIR/.venv/bin/python"
+else
+    PYTHON="python3"
+fi
 
 get_pid() {
     lsof -ti :$WEB_PORT 2>/dev/null | head -1
@@ -19,7 +26,7 @@ start() {
     echo "Starting Sisyphus BBS..."
     mkdir -p "$SCRIPT_DIR/log" "$SCRIPT_DIR/db"
     cd "$SCRIPT_DIR"
-    python3.14 src/app.py >> "$LOG_FILE" 2>&1 &
+    "$PYTHON" src/app.py >> "$LOG_FILE" 2>&1 &
 
     for i in $(seq 1 10); do
         if nc -z localhost $WEB_PORT 2>/dev/null; then
@@ -61,8 +68,7 @@ stop() {
 status() {
     PID=$(get_pid)
     if [ -n "$PID" ]; then
-        echo "Sisyphus BBS is running (PID $PID)"
-        nc -z localhost $SSH_PORT 2>/dev/null && echo "  Web: up  SSH: up" || echo "  Web: up  SSH: down"
+        echo "Sisyphus BBS is running (PID $PID) on port $WEB_PORT"
     else
         echo "Sisyphus BBS is not running"
     fi

@@ -21,7 +21,7 @@ from lib.mille import (
     create_invite, get_invite_from, get_invite_to, cancel_invite,
     set_flash, pop_flash, expire_invites, INVITE_TIMEOUT,
     # PvP
-    new_pvp_game, get_pvp_game, remove_pvp_game, get_me_and_opponent,
+    new_pvp_game, get_pvp_game, remove_pvp_game, leave_pvp_game, get_me_and_opponent,
     # Scores
     save_score, get_high_scores,
 )
@@ -130,6 +130,21 @@ def _auto_advance_cpu(game):
 # PvP helpers
 # ---------------------------------------------------------------------------
 
+def _give_turn(game, to_id):
+    """Draw for *to_id* and make it their turn, unless they have nothing to play.
+
+    Once the deck is gone a player can run out of cards before their
+    opponent does (a coup fourre leaves hands uneven). Play and discard both
+    need a card, so handing such a player the turn would stall the game with
+    no move available to anyone; the opponent keeps playing instead, and the
+    game ends on points when both hands are empty.
+    """
+    player, other, _, other_id = get_me_and_opponent(game, to_id)
+    if game.deck:
+        player.hand.append(game.deck.pop())
+    game.current_turn = to_id if player.hand or not other.hand else other_id
+
+
 def _check_pvp_game_over(game):
     """Set game.winner if either PvP player has reached 1000 miles or both are out of cards."""
     if game.player1.miles >= 1000:
@@ -168,8 +183,9 @@ async def mille_page(request: Request, user: dict = Depends(require_user)):
         me, opp, my_id, opp_id = get_me_and_opponent(pvp, uid)
 
         if pvp.winner and uid in pvp.seen_game_over:
-            # User already saw results; clear their link so they see the lobby
-            remove_pvp_game(pvp.game_id)
+            # User already saw results; clear their link so they see the lobby.
+            # Only theirs: the opponent may not have looked yet.
+            leave_pvp_game(uid)
         elif pvp.winner:
             if not pvp.score_saved:
                 pvp.score_saved = True
@@ -451,6 +467,9 @@ async def mille_invite(
 ):
     """Send a PvP game invitation to another online user."""
     uid = user["id"]
+    # Playing both sides would let one person post whatever score they like.
+    if to_user_id == uid:
+        return RedirectResponse("/games/mille", status_code=302)
     # Can't invite while in a game
     if get_pvp_game(uid) or get_game(uid):
         return RedirectResponse("/games/mille", status_code=302)
@@ -563,9 +582,7 @@ async def mille_pvp_play(
 
     # Switch turns and draw for next player
     if not pvp.winner:
-        pvp.current_turn = opp_id
-        if pvp.deck:
-            opp.hand.append(pvp.deck.pop())
+        _give_turn(pvp, opp_id)
 
     return RedirectResponse("/games/mille", status_code=302)
 
@@ -593,9 +610,7 @@ async def mille_pvp_discard(
     _check_pvp_game_over(pvp)
 
     if not pvp.winner:
-        pvp.current_turn = opp_id
-        if pvp.deck:
-            opp.hand.append(pvp.deck.pop())
+        _give_turn(pvp, opp_id)
 
     return RedirectResponse("/games/mille", status_code=302)
 
@@ -621,17 +636,13 @@ async def mille_pvp_coup(
         safety = SAFETY_FOR[hazard_name]
         apply_coup_fourre(me, hazard_name)
         pvp.messages.append(f"{me.name} plays Coup Fourre: {safety}!")
-        # Coup fourre: the player who played it gets the turn and draws
-        pvp.current_turn = my_id
-        if pvp.deck:
-            me.hand.append(pvp.deck.pop())
-    else:
-        # Declined — turn passes to opponent (the one who played the hazard)
-        pvp.current_turn = opp_id
-        if pvp.deck:
-            opp.hand.append(pvp.deck.pop())
 
+    # Either way the hazard was the opponent's move, so the turn comes here:
+    # accepting only changes whether the hazard sticks. (Passing it back on a
+    # decline gave the attacker two turns in a row.)
     _check_pvp_game_over(pvp)
+    if not pvp.winner:
+        _give_turn(pvp, my_id)
 
     return RedirectResponse("/games/mille", status_code=302)
 
@@ -648,6 +659,9 @@ async def mille_pvp_quit(request: Request, user: dict = Depends(require_user)):
         me, opp, my_id, opp_id = get_me_and_opponent(pvp, uid)
         set_flash(opp_id, f"{me.name} forfeited the game. You win!")
         pvp.winner = opp.name
-
-    remove_pvp_game(pvp.game_id)
+        remove_pvp_game(pvp.game_id)
+    else:
+        # "Back to Lobby" after a finished game: leave without taking the
+        # result screen away from an opponent who has not seen it yet.
+        leave_pvp_game(uid)
     return RedirectResponse("/games/mille", status_code=302)

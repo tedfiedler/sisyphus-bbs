@@ -29,6 +29,19 @@ def reset_rate_limiters():
     yield
 
 
+@pytest.fixture(autouse=True)
+def reset_game_state():
+    """Games, invites, and flash messages live in module-level dicts."""
+    from lib import mille
+
+    stores = (mille._games, mille._invites, mille._flash, mille._pvp_games, mille._user_pvp)
+    for store in stores:
+        store.clear()
+    yield
+    for store in stores:
+        store.clear()
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def reset_db():
     """Reset database before each test."""

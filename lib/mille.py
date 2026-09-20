@@ -56,7 +56,7 @@ def card_name(card):
 
 
 def build_deck():
-    """Build and shuffle a standard 101-card Mille Bornes deck."""
+    """Build and shuffle a standard 106-card Mille Bornes deck."""
     specs = [
         ("distance", 25, 10), ("distance", 50, 10), ("distance", 75, 10),
         ("distance", 100, 12), ("distance", 200, 4),
@@ -444,6 +444,17 @@ def remove_pvp_game(game_id: str) -> None:
     if game:
         _user_pvp.pop(game.player1_id, None)
         _user_pvp.pop(game.player2_id, None)
+
+
+def leave_pvp_game(user_id: int) -> None:
+    """Unlink one player from their PvP game; drop the game once nobody is left.
+
+    Used after a finished game so that one player returning to the lobby
+    does not take the result screen away from the other.
+    """
+    gid = _user_pvp.pop(user_id, None)
+    if gid is not None and gid not in _user_pvp.values():
+        _pvp_games.pop(gid, None)
 
 
 def get_me_and_opponent(game: PvpGameState, user_id: int) -> tuple[Player, Player, int, int]:

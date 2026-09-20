@@ -498,4 +498,4 @@ def test_every_event_the_rules_can_report_has_words():
     reported |= {"fury", "flame", "quick_hands"}              # passed to _you_strike by name
     assert reported and reported <= set(text.EVENTS), reported - set(text.EVENTS)
     for line in text.EVENTS.values():
-        line.format(foe="Goat", n=3)                         # no stray placeholders
+        line.format(foe="the Goat", Foe="The Goat", hits="hits", **{"is": "is"}, n=3)   # no stray placeholders

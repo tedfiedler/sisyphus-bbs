@@ -53,9 +53,10 @@ def _news_line(kind: str, username: str, detail: str, player: store.Player) -> s
     """Stentor's wording for something a climber did. Variants rotate with the turn."""
     variants = text.NEWS[kind]
     c = player.climber
+    detail = str(c.ascents if kind == scenes.ASCENDED else detail)
     return variants[player.turn % len(variants)].format(
         name=username, band=data.BANDS[c.level - 1],
-        detail=c.ascents if kind == scenes.ASCENDED else detail,
+        detail=detail, Detail=detail[:1].upper() + detail[1:],
     )
 
 
@@ -175,7 +176,7 @@ async def _camp(player: store.Player, today) -> list[scenes.Target]:
                 user_id=sleeper.user_id, name=sleeper.username,
                 foe=rules.sleeper_as_foe(them.climber, sleeper.username, away),
                 title=rules.title(them.climber.ascents),
-                band=data.BANDS[min(them.climber.weapon, them.climber.armour) - 1],
+                weapon=data.WEAPONS[them.climber.weapon - 1], armour=data.ARMOURS[them.climber.armour - 1],
                 in_room=rules.is_sheltered(them.climber.room, away),
             ))
     targets.sort(key=lambda t: (-t.foe.xp, t.name.lower()))
@@ -233,7 +234,8 @@ async def _tell_the_town(user: dict, player: store.Player, today) -> None:
             detail = detail["name"]
         if kind in (scenes.LEVEL_GAINED, scenes.ASCENDED):
             await store.record_score(
-                user["id"], rules.renown(player.climber), detail, won=kind == scenes.ASCENDED,
+                user["id"], rules.renown(player.climber), detail.removeprefix("the "),
+                won=kind == scenes.ASCENDED,
             )
         await store.add_news(today, user["id"], _news_line(kind, user["username"], detail, player))
 

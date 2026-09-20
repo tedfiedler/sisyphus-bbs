@@ -38,22 +38,22 @@ AGORA_SPENT = "Your legs have done all the climbing they mean to do today."
 
 SLOPES = "The path leaves the last houses behind. You are in {band}."
 SLOPES_SPENT = "You have no more climbing in you today. The mountain will keep."
-NOTHING_LEFT = "You look for trouble, but your legs refuse to look with you."
-
 FIGHT_OPENS = "Something moves on the path ahead: {foe}."
 AMBUSH = "It saw you first."
 
 # One line for every event the rules can report; a test checks none is missing.
+# {foe} is the enemy mid-sentence ("the Irritable Goat", "Kleitos Two-Dogs"),
+# {Foe} the same at the start of one; {hits} and {is} agree with it in number.
 EVENTS = {
     "ambush": AMBUSH,
     "you_hit": "You strike {foe} for {n}.",
     "mighty": "A mighty blow!",
     "fury": "Ares takes your arm for a moment. You strike {foe} for {n}.",
-    "flame": "Hecate's fire leaps from your hand: {n}. {foe} smoulders, and flinches.",
+    "flame": "Hecate's fire leaps from your hand at {foe}: {n}. Whatever comes back next will have less behind it.",
     "quick_hands": "You strike {foe} for {n}, and come away with something that jingles.",
     "mend": "You whisper what the torch taught you. {n} hit points return.",
-    "foe_hits": "{foe} hits you for {n}.",
-    "foe_falls": "{foe} is beaten.",
+    "foe_hits": "{Foe} {hits} you for {n}.",
+    "foe_falls": "{Foe} {is} beaten.",
     "you_fall": "The sky tips over, and goes dark.",
     "fled": "You run. It is not dignified, but you are alive.",
     "shadow": "You step sideways into a shadow that was not there a moment ago.",
@@ -310,6 +310,7 @@ GOSSIP = (
 
 WALL = "The wall by the door is soft plaster, and generations of climbers have scratched their thoughts into it."
 WALL_EMPTY = "Nobody has written anything lately. The plaster is smooth and inviting."
+WALL_WRITTEN_LAST = "That is five today. Nikandros is looking at you over the rim of a cup he is pretending to polish."
 WALL_WRITTEN = "You scratch it in with the point of your knife. It looks permanent. It is not."
 WALL_FULL = "Nikandros coughs. \"Five a day,\" he says. \"It's a wall, not a diary.\""
 WALL_REFUSED = "The plaster will not take that. (One line, up to 120 characters, and no links.)"
@@ -349,13 +350,16 @@ NEWS = {
         "{name} has come to Ephyra with an olive branch and an expression of confidence.",
         "A newcomer: {name}. Agathe has been told.",
     ),
+    # {detail} is whoever was beaten or did the beating, with its article;
+    # {Detail} the same at the start of a sentence. Past tense throughout, so
+    # that "Damon and Lykos" and "the Twin Vipers" need no special verbs.
     "level": (
         "{name} got past {detail} and now stands in {band}.",
-        "{detail} has let {name} through. {band} will see what they are made of.",
+        "{Detail} stepped aside for {name}. {band} will see what they are made of.",
     ),
     "death": (
         "{name} was carried down from {band}, the work of {detail}. They will be fine by morning.",
-        "{detail} has sent {name} back to Akeso. She has the good thyme out.",
+        "{Detail} sent {name} back to Akeso. She has the good thyme out.",
     ),
     "ascent": (
         "{name} HAS COME DOWN WITH AN APPLE. That is ascent number {detail}. Ladon is said to be furious.",
@@ -435,6 +439,7 @@ EVENT_RESULT = {
     "rockslide": "The slope above you lets go. You are fast, but not fast enough to keep all of yourself: {n} hit points lost.",
     "eagle": "An eagle passes overhead and lets something fall. It is a purse, only slightly pecked: {n} drachmae.",
     "oracle": "An old woman on the path looks through you. \"{n} XP,\" she says, \"and then the gate.\" She does not explain, and you find you do not need her to.",
+    "oracle_ready": "An old woman on the path looks through you. \"Nothing more to learn down here,\" she says. \"Only the gate. Go and knock.\"",
     "oracle_garden": "An old woman on the path looks through you. \"You have run out of mountain,\" she says. \"What is left is the garden, and your best bronze, and your nerve.\"",
     "shade": "A figure sits where the path turns, grey as morning, practising something over and over. It is a climber who did not come back. Wordlessly they show you what they had almost learned. Your calling rank is now {n}.",
     "smoke": "Smoke between the pines. You follow it to a fire with shepherds round it, who shift up to make room as if they had been expecting you. You will know the way to the Shepherds' Fire from now on.",
@@ -493,8 +498,8 @@ CAMP = (
 CAMP_SPENT = "You have done enough skulking for one night."
 CAMP_EMPTY = "Nobody here is worth the risk, or within your reach."
 CAMP_KEY = "Nikandros' key is in your pocket. One of the doors upstairs will open to it."
-SLEEPER = "{name}, {title}, asleep in {band} gear."
-SLEEPER_ROOM = "{name}, {title}, asleep upstairs at the Lethe House."
+SLEEPER = "{name}, {title}, asleep beside the {weapon}, in the {armour}."
+SLEEPER_ROOM = "{name}, {title}, asleep upstairs at the Lethe House, with the {weapon} within reach."
 ROB_OPENS = "You pick your way between the sleepers to {name}, and reach for the purse. {name} wakes."
 ROB_OPENS_ROOM = "The key turns. {name} is awake before the door is fully open."
 ROBBED_THEM = "{name} goes down. The purse is yours: {drachmae} drachmae."

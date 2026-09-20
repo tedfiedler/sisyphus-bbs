@@ -58,7 +58,6 @@ def test_instant_events():
     assert found == round(data.REF_DRACHMAE[3] * 2) and c.purse == 5 + found
 
     assert rules.resolve_event(Dice(), climber(level=2, xp=100), "oracle").n == data.XP_TO_NEXT[1] - 100
-    assert rules.resolve_event(Dice(), climber(level=2, xp=10**9), "oracle").n == 0
     assert rules.resolve_event(Dice(), climber(level=12), "oracle").key == "oracle_garden"
 
     c = climber(rank=40)
@@ -321,3 +320,53 @@ def test_every_event_screen_has_distinct_hotkeys_and_ends_with_a_way_out():
         keys = [choice.key for choice in choices]
         assert len(keys) == len(set(keys)) and len(choices) >= 2
         assert choices[-1].action == f"event:{data.EVENT_OPTIONS[kind][-1]}"
+
+
+# ---------------------------------------------------------------------------
+# Step 8: how it reads
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("foe, mid_sentence", [
+    (rules.creature(1, 1), "the Irritable Goat"),
+    (rules.creature(7, 6), "the Talon Twins"),               # already has an article; do not double it
+    (rules.creature(7, 8), "Aetos the Old Eagle"),           # a name, not a kind of thing
+    (rules.creature(6, 8), "Nephele's Hound"),
+    (rules.creature(2, 8), "the Landlord's Bailiff"),
+    (rules.gatekeeper(3), "Kleitos Two-Dogs"),
+    (rules.gatekeeper(10), "the Warden"),
+    (rules.ladon(), "Ladon"),
+    (rules.sleeper_as_foe(climber(), "bob", 0), "bob"),
+])
+def test_foes_read_naturally_in_a_sentence(foe, mid_sentence):
+    assert scenes.with_article(foe) == mid_sentence
+
+
+def _told(foe, *events):
+    fight = rules.Fight(foe=foe, foe_hp=1, events=list(events))
+    return scenes._narrate(fight)
+
+
+def test_verbs_agree_with_how_many_of_them_there_are():
+    assert _told(rules.creature(1, 1), ("foe_hits", 4), ("foe_falls", 0)) == [
+        "The Irritable Goat hits you for 4.", "The Irritable Goat is beaten."]
+    assert _told(rules.creature(5, 5), ("foe_hits", 4), ("foe_falls", 0)) == [
+        "The Twin Vipers hit you for 4.", "The Twin Vipers are beaten."]
+    assert _told(rules.gatekeeper(5), ("foe_hits", 9)) == ["Damon and Lykos hit you for 9."]
+    assert _told(rules.creature(7, 8), ("you_hit", 3)) == ["You strike Aetos the Old Eagle for 3."]
+
+
+def test_the_oracle_does_not_count_to_zero():
+    assert rules.resolve_event(Dice(), climber(level=2, xp=10**9), "oracle").key == "oracle_ready"
+    assert "Go and knock" in text.EVENT_RESULT["oracle_ready"]
+
+
+def test_no_line_of_prose_is_written_and_never_said():
+    """Anything in text.py that nothing refers to is either a bug or clutter."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent / "lib"
+    code = "\n".join(p.read_text() for p in root.rglob("*.py") if p.name != "text.py")
+    names = re.findall(r"^([A-Z][A-Z_]+) = ", (root / "climb" / "text.py").read_text(), re.MULTILINE)
+    unused = [name for name in names if f"text.{name}" not in code]
+    assert unused == ["AMBUSH"], unused                       # AMBUSH is used inside text.EVENTS itself

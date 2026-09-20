@@ -137,7 +137,7 @@ async def test_the_camp_lists_only_those_who_can_be_robbed(alice, bob, dice):
         await act(client, "go:camp")
         html = unescape((await client.get(PAGE)).text)
         assert offered(html) == [f"rob:{bob['id']}", "go:agora"]
-        assert "bob, Climber, asleep in The Foothills gear." in html and "3 left tonight" in html
+        assert "bob, Climber, asleep beside the Olive Branch, in the Wool Cloak." in html and "3 left tonight" in html
         for hidden in ("awake", "newcomer", "roomed", "lowly", "dead"):
             assert f"Rob {hidden}" not in html
 
@@ -304,7 +304,7 @@ async def test_nikandros_key_opens_one_door(alice, bob, dice):
         await act(client, "go:agora")
         await act(client, "go:camp")
         html = unescape((await client.get(PAGE)).text)
-        assert text.CAMP_KEY in html and "bob, Climber, asleep upstairs at the Lethe House." in html
+        assert text.CAMP_KEY in html and "bob, Climber, asleep upstairs at the Lethe House, with the Olive Branch" in html
 
         dice(chance=[NO_AMBUSH])
         await act(client, f"rob:{bob['id']}")

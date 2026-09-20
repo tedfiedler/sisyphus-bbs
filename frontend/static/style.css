@@ -404,3 +404,15 @@ th { color: var(--accent); font-size: 12px; text-transform: uppercase; }
 .climb-news h3 { color: var(--accent); font-size: 12px; text-transform: uppercase; margin-bottom: 4px; }
 .climb-news p, .climb-wall p { margin-bottom: 4px; max-width: 75ch; }
 .climb-wall { margin-top: 10px; border-left: 3px solid var(--border); padding-left: 10px; }
+
+/* The Long Climb on a phone: tables scroll sideways inside themselves rather
+   than dragging the whole page with them, and choices become a column of
+   full-width, finger-sized buttons. */
+.climb-stele { display: block; overflow-x: auto; white-space: nowrap; }
+@media (max-width: 600px) {
+    .climb-status { font-size: 12px; gap: 2px 14px; }
+    .climb-choices { flex-direction: column; }
+    .climb-choice { width: 100%; }
+    .climb-choice button { flex: 1; min-height: 44px; padding: 12px 14px; text-align: left; }
+    .climb-amount, .climb-words { flex: 1; width: auto; min-width: 0; }
+}

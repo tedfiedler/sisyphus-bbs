@@ -145,6 +145,16 @@ CREATURES = (
      "Ladon's Shed Skin", "Lesser Head of Ladon", "Twin Heads of Ladon", "Nymph-Guard of the Tree"),
 )
 
+# Grammar for narration. Creatures take "the" ("the Irritable Goat") unless they
+# are named here; people (gatekeepers, climbers, Ladon) never do. Plural foes
+# take plural verbs ("the Twin Vipers hit you").
+NO_ARTICLE_FOES = frozenset({
+    "Aetos the Old Eagle", "Nephele's Hound", "Ladon's Shed Skin", "Atlas' Dropped Pebble",
+})
+PLURAL_FOES = frozenset({
+    "Twin Vipers", "Garden Wasps", "The Talon Twins", "Twin Heads of Ladon", "Damon and Lykos",
+})
+
 # Ascents needed for each title, highest first.
 TITLES = (
     (10, "the Happy"), (7, "Friend of the Mountain"), (5, "Stone-Roller"),
@@ -248,6 +258,8 @@ CREDIT = "In the tradition of the BBS door games of the early '90s."
 assert len(CREATURES) == LEVELS and all(len(band) == CREATURES_PER_BAND for band in CREATURES)
 assert len(GATEKEEPERS) == LEVELS - 1 == len(XP_TO_NEXT)
 assert len(WEAPONS) == len(ARMOURS) == len(BANDS) == LEVELS
+_every_foe = {name for band in CREATURES for name in band} | set(GATEKEEPERS)
+assert NO_ARTICLE_FOES <= _every_foe and PLURAL_FOES <= _every_foe
 assert abs(sum(share for _, share in SONGS) - 1) < 1e-9
 assert sum(weight for _, weight in EVENTS) == 100
 assert {name for name, _ in EVENTS} == INSTANT_EVENTS | set(EVENT_OPTIONS)

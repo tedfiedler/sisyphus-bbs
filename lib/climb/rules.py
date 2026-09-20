@@ -489,7 +489,9 @@ def resolve_event(rng: Random, c: Climber, kind: str, option: str = "", amount: 
             needed = xp_to_next(c.level)
             if needed is None:
                 return EventResult("oracle_garden")
-            return EventResult("oracle", max(0, needed - c.xp))
+            if c.xp >= needed:
+                return EventResult("oracle_ready")
+            return EventResult("oracle", needed - c.xp)
         if kind == "shade":
             c.rank = min(data.MAX_RANK, c.rank + 1)
             return EventResult("shade", c.rank)

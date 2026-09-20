@@ -70,7 +70,8 @@ class Target:
     name: str
     foe: rules.Foe
     title: str
-    band: str
+    weapon: str
+    armour: str
     in_room: bool
 
 
@@ -193,6 +194,8 @@ def _corner(c: rules.Climber) -> Screen:
             choices.append(Choice(key, label, f"court:{regular}"))
         elif current in (None, regular):
             reasons.add(reason)
+        elif reason == "other" and not c.wed:
+            lines.append(text.COURT_OTHER.format(name=name, other=text.REGULAR_NAMES[current]))
     step = c.courtship + 1 if current else 1
     if "charm" in reasons:
         lines.append(text.COURT_NEED_CHARM.format(
@@ -341,7 +344,8 @@ def screen(player: Player, camp: list[Target] | None = None, people: list[Person
         else:
             for number, target in enumerate(camp, start=1):
                 line = text.SLEEPER_ROOM if target.in_room else text.SLEEPER
-                lines.append(f"({number}) " + line.format(name=target.name, title=target.title, band=target.band))
+                lines.append(f"({number}) " + line.format(
+                    name=target.name, title=target.title, weapon=target.weapon, armour=target.armour))
                 choices.append(Choice(str(number), f"({number}) Rob {target.name}", f"rob:{target.user_id}"))
         choices.append(Choice("b", "(B)ack to the Agora", f"go:{AGORA}"))
         return Screen(f"The Camp ({c.duels_left} left tonight)", lines, choices)
@@ -359,11 +363,13 @@ def screen(player: Player, camp: list[Target] | None = None, people: list[Person
         return Screen("The Herald's Board", list(text.HERALD), [Choice("b", "(B)ack to the Agora", f"go:{AGORA}")])
 
     if player.scene == WALL:
-        choices = []
+        lines, choices = [text.WALL], []
         if c.wall_today < data.WALL_LINES_PER_DAY:
             choices.append(Choice("s", "(S)cratch a line", "wall:write", words=True))
+        else:
+            lines.append(text.WALL_FULL)
         choices.append(Choice("b", "(B)ack to the bar", f"go:{LETHE}"))
-        return Screen("The Wall", [text.WALL], choices)
+        return Screen("The Wall", lines, choices)
 
     if player.scene == LETHE:
         lines = list(text.LETHE)
@@ -534,8 +540,22 @@ def status(player: Player) -> dict:
 # Acting
 # ---------------------------------------------------------------------------
 
+def with_article(foe: rules.Foe) -> str:
+    """The foe as it reads mid-sentence: creatures take "the", people do not."""
+    name = foe.name
+    if foe.kind != rules.CREATURE or name in data.NO_ARTICLE_FOES:
+        return "the Warden" if name == "The Warden" else name
+    return "the " + name.removeprefix("The ")
+
+
 def _narrate(fight: rules.Fight) -> list[str]:
-    return [text.EVENTS[event].format(foe=fight.foe.name, n=n) for event, n in fight.events]
+    foe = with_article(fight.foe)
+    plural = fight.foe.name in data.PLURAL_FOES
+    words = {
+        "foe": foe, "Foe": foe[0].upper() + foe[1:],
+        "hits": "hit" if plural else "hits", "is": "are" if plural else "is",
+    }
+    return [text.EVENTS[event].format(n=n, **words) for event, n in fight.events]
 
 
 def _after_blows(rng: Random, player: Player) -> None:
@@ -564,7 +584,7 @@ def _after_blows(rng: Random, player: Player) -> None:
         if fight.outcome is Outcome.WON:
             rules.apply_level_up(c)
             player.notice += [won, text.LEVEL_UP.format(band=data.BANDS[c.level - 1], level=c.level)]
-            player.happenings.append((LEVEL_GAINED, fight.foe.name))
+            player.happenings.append((LEVEL_GAINED, with_article(fight.foe)))
         else:
             player.notice.append(lost)
         player.scene = PALAESTRA
@@ -591,7 +611,7 @@ def _after_blows(rng: Random, player: Player) -> None:
     else:
         if fight.foe.kind == rules.LADON:
             player.notice.append(text.LADON_WINS)
-        player.happenings.append((DIED, fight.foe.name))
+        player.happenings.append((DIED, with_article(fight.foe)))
         drachmae, xp = rules.apply_death(c)
         player.notice += [line.format(drachmae=drachmae, xp=xp) for line in text.DEATH]
         player.scene = DEAD
@@ -600,7 +620,7 @@ def _after_blows(rng: Random, player: Player) -> None:
 def _start_fight(rng: Random, player: Player, foe: rules.Foe) -> None:
     player.fight = rules.open_fight(rng, player.climber, foe)
     player.scene = FIGHT
-    player.notice.append(text.FIGHT_OPENS.format(foe=foe.name))
+    player.notice.append(text.FIGHT_OPENS.format(foe=with_article(foe)))
     player.notice += _narrate(player.fight)
     _after_blows(rng, player)
 
@@ -766,7 +786,8 @@ def act(rng: Random, player: Player, action: str, amount: int = 0, words: str = 
         else:
             c.wall_today += 1
             player.happenings.append((WROTE, line))
-            player.notice.append(text.WALL_WRITTEN)
+            last = c.wall_today >= data.WALL_LINES_PER_DAY
+            player.notice.append(text.WALL_WRITTEN_LAST if last else text.WALL_WRITTEN)
 
     elif action == "garden":
         c.fights_left -= 1

@@ -126,6 +126,20 @@ async def test_post_needs_the_csrf_token(alice, dice):
     assert resp.status_code == 403 and await store.load(alice["id"]) is None
 
 
+@pytest.mark.asyncio
+async def test_reloading_after_a_lost_post_lands_on_the_screen(alice, dice):
+    """Reloading the browser's error page after a post that never arrived
+    sends a GET to the action URL. The player goes back to their screen,
+    nothing rolls, and the same holds for the sysop tools beneath it."""
+    async with await client_for(alice["id"]) as client:
+        for path in ("/act", "/admin/reset/1", "/admin/wall/1/delete"):
+            resp = await client.get(f"{PAGE}{path}", follow_redirects=False)
+            assert (resp.status_code, resp.headers["location"]) == (303, PAGE), path
+        resp = await client.put(f"{PAGE}/act", follow_redirects=False)
+        assert resp.status_code == 405
+    assert await store.load(alice["id"]) is None
+
+
 # ---------------------------------------------------------------------------
 # The Slopes
 # ---------------------------------------------------------------------------

@@ -1,9 +1,11 @@
 """FastAPI application setup, static file mounting, template configuration, and route registration."""
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.routing import Match
 
 from lib import auth as _auth
 from lib import chat as _chat
@@ -99,6 +101,30 @@ app.add_middleware(
 )
 
 
+def _page_above(path: str) -> str | None:
+    """The nearest ancestor of ``path`` that answers a GET, or None."""
+    while path not in ("", "/"):
+        path = path.rsplit("/", 1)[0] or "/"
+        scope = {"type": "http", "method": "GET", "path": path, "root_path": ""}
+        if any(route.matches(scope)[0] is Match.FULL for route in app.router.routes):
+            return path
+    return None
+
+
+@app.exception_handler(405)
+async def _method_not_allowed(request: Request, exc):
+    """A GET of a POST-only URL goes to the page its form lives on.
+
+    Actions such as ``/games/climb/act`` are only ever reached by submitting a
+    form, but a browser still sends a GET there when the player reloads after
+    a post that failed on the wire, or opens the URL from history. A JSON
+    "Method Not Allowed" is no help; the page above it is where they were.
+    """
+    if request.method in ("GET", "HEAD"):
+        page = _page_above(request.url.path)
+        if page is not None:
+            return RedirectResponse(page, status_code=303)
+    return await http_exception_handler(request, exc)
 
 
 from lib.routes import auth_routes, board_routes, file_routes, chat_routes, admin_routes, game_routes, climb_routes  # noqa: E402

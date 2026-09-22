@@ -57,6 +57,12 @@ async def main():
         # Chat frames are a few KB at most; the 16 MB default lets a client
         # make the server buffer and parse far more than it will ever accept.
         ws_max_size=64 * 1024,
+        # Uvicorn's default drops an idle connection after 5 seconds. Browsers
+        # hold one open for a minute or more and reuse it for the next click,
+        # and they will not retry a form POST that dies on a connection the
+        # server closed at the same instant. Outlast them so the browser is
+        # the side that closes idle connections.
+        timeout_keep_alive=120,
         **ssl_args,
     )
     server = uvicorn.Server(uv_config)

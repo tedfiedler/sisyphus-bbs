@@ -107,6 +107,16 @@ async def test_actions_without_a_game_are_harmless(alice):
     assert mille.get_game(alice["id"]) is None
 
 
+@pytest.mark.asyncio
+async def test_a_get_of_an_action_returns_to_the_table(alice):
+    """A reload after a failed form post, or a bookmarked action URL."""
+    async with await client_for(alice["id"]) as client:
+        for path in ("discard", "invite/cancel", "pvp/play"):
+            resp = await client.get(f"{PAGE}/{path}", follow_redirects=False)
+            assert (resp.status_code, resp.headers["location"]) == (303, PAGE), path
+    assert mille.get_game(alice["id"]) is None
+
+
 # ---------------------------------------------------------------------------
 # A turn
 # ---------------------------------------------------------------------------

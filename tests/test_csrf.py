@@ -142,9 +142,12 @@ async def test_get_requests_are_unaffected():
 
 @pytest.mark.asyncio
 async def test_logout_is_post_only():
+    """A GET is bounced to the front page and the session survives it."""
     admin = await _superadmin()
     async with await client_for(admin["id"]) as client:
-        assert (await client.get("/logout", follow_redirects=False)).status_code == 405
+        resp = await client.get("/logout", follow_redirects=False)
+        assert (resp.status_code, resp.headers["location"]) == (303, "/")
+        assert (await client.get("/home")).status_code == 200
         assert (await client.post("/logout", follow_redirects=False)).status_code == 302
 
 

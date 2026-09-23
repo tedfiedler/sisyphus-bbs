@@ -1,7 +1,6 @@
-# The Jarldoms — Design
+# Nine Fjords — Design
 
-Status: **draft for review.** Working title; §18 lists alternatives and the
-questions the build needs answered. Nothing is built.
+Status: **approved 2026-09-23** (review record in §18). Step 1 of §17 built the same day; the rest is in progress.
 
 A daily-turn empire game for Sisyphus BBS, in the tradition of the BBS door
 games of the early 1990s that put every player in charge of a realm and let
@@ -38,16 +37,16 @@ written during implementation.
    the game's title screen, reads: *"In the tradition of the BBS door games of
    the early '90s."*
 4. **Numbers are designed, then tested.** The tables in §16 are sized by
-   `docs/jarldoms/balance_sim.py` now and will be generated from
-   `lib/jarl/data.py` and checked by `lib/jarl/sim.py` once built, which plays
+   `docs/nine-fjords/balance_sim.py` now and will be generated from
+   `lib/fjords/data.py` and checked by `lib/fjords/sim.py` once built, which plays
    whole rounds with the real rules; none comes from recollection of anyone
    else's. A test fails if any proper noun from another game appears in the
    code or templates.
 5. **Where a familiar convention could be done our own way, it is.** Land is
    *steadings* at the head of a fjord, and the wild beyond them is cleared, not
    bought; the army is a *shield-wall* of huscarls and a levy of farmers; you
-   cannot attack without *longships*, and ships have a hold; raids take
-   *thralls*; the newspaper is a *saga*; the parliament is the *Thing*; the
+   cannot attack without *longships*, and ships have a hold; the newspaper is
+   a *saga*; the parliament is the *Thing*; the
    score is *renown*, and it is cut into a stone at Yule.
 
 Tone: dry, saga-flat, PG-13. The skald understates. Violence is the stuff of
@@ -142,7 +141,7 @@ renown (§13). It is the Thing's opinion of you (§8).
 | Season | Days | What changes |
 |---|---|---|
 | **Thaw** | 1–10 | Clearing land costs half. New jarls arrive here without a handicap. |
-| **Sailing** | 11–20 | Raids cost 2 turns instead of 3. Thralls are worth more (§6). |
+| **Sailing** | 11–20 | Raids cost 2 turns instead of 3, and a winning raid takes a third of the stores instead of a quarter (§6). |
 | **Frost** | 21–30 | No land can be cleared; folk eat half again as much; the sea is rough and a raid may be turned back by weather (10%). |
 
 **Yule** is the dawn of day 31. Eyvind reads the reckoning: renown for every
@@ -193,13 +192,13 @@ ratio    = attack / defence          luck is 0.9–1.1 for each side
 ```
 
 **Raid** (3 turns). If the ratio is 1 or better you win: a quarter of their
-silver, grain and timber comes home with you, and one in fifty of their folk
-as **thralls**, who become your folk (one in thirty in sailing season). You
-lose 15% of the huscarls you sent, divided by the ratio; they lose 30% of
-theirs and a tenth of the levy. If you lose, you lose 35% of what you sent
-and they lose 10% of theirs, and nothing changes hands.
+silver, grain and timber comes home with you (a third in sailing season).
+Raids take goods, never people. You lose 15% of the huscarls you sent,
+divided by the ratio; they lose 30% of theirs and a tenth of the levy. If
+you lose, you lose 35% of what you sent and they lose 10% of theirs, and
+nothing changes hands.
 
-**Land-taking** (4 turns). The same battle, but you need a ratio of **1.5**
+**Land-taking** (4 turns). The same battle, but you need a ratio of **2**
 to win, and the prize is a tenth of their steadings, which arrive as wild
 land of yours (their wild first, then woodland, then farms, then longhouses;
 never their last of anything). Land-taking against a realm under the Thing's
@@ -213,7 +212,8 @@ Rules of the sea:
   their realm stands still until they return (§12).
 - **A pact** (§8) takes a jarl off your list of targets until it is broken.
 - Battles are settled the moment you sail. The other jarl reads about it at
-  their next dawn, in the hall and in the Saga.
+  their next dawn, in the hall and in the Saga. (For a jarl on another board,
+  see §19.)
 - Weather in frost turns a sailing back one time in ten; the turns are spent.
 
 ## 7. The watchers
@@ -288,8 +288,8 @@ and on the Stone like anyone else.
 | Jarl | Habit | What that means |
 |---|---|---|
 | **Halvard the Grey** | Farmer | Clears, builds, keeps a modest guard. Never sails. Accepts any pact. |
-| **Sigrun Oarbreaker** | Raider | Ships and huscarls; raids whoever is richest and undefended, three times a day. Accepts a pact only from a jarl with more huscarls than she has. Breaks it when that stops being true. |
-| **Ketil Half-Troll** | Conqueror | Takes land from the weakest defended realm he can beat decisively. Accepts a pact from anyone who has beaten him at home. |
+| **Sigrun Oarbreaker** | Raider | Ships and huscarls; raids the richest hold she expects to beat, three times a day, and reinvests the loot. Accepts a pact only from a jarl with more huscarls than she has. Breaks it when that stops being true. |
+| **Ketil Half-Troll** | Conqueror | Builds until he can take land from the softest realm decisively, then does. Accepts a pact from anyone who has beaten him at home. |
 | **Ingirid Salt-Wise** | Turtle | Palisade, huscarls at home, farms. Never sails. Accepts any pact and never breaks one. |
 | **Orm Sheep-Rich** | Trader | Runs Saltvik. Has a realm on the neutral island that cannot be sailed against; his renown does not count for the Stone. |
 
@@ -326,7 +326,7 @@ and huscarls and hoards are worth something but not a round.
   reckonings of past years: High King, the top three, and the year's Saga
   highlights.
 - **Sisyphus integration.** The game appears in `/games` beside the others. It
-  writes a `game_scores` row (game `jarl`) each day a jarl plays, with their
+  writes a `game_scores` row (game `fjords`) each day a jarl plays, with their
   renown, and one with `won = 1` for the High King at Yule, so playing counts
   toward the file-access "has played a game" rule exactly as Mille Bornes and
   the climb do, and only after a successful save.
@@ -335,7 +335,7 @@ and huscarls and hoards are worth something but not a round.
 
 ## 14. Interface
 
-One page, `/games/jarl`, server-rendered, in the site's terminal look.
+One page, `/games/fjords`, server-rendered, in the site's terminal look.
 
 - **The hall** is the home screen: Gunnhild's ledger in a two-column table,
   the overnight report as a list, and the action buttons. Actions that need a
@@ -358,7 +358,7 @@ One page, `/games/jarl`, server-rendered, in the site's terminal look.
 ## 15. Technical design
 
 ```
-lib/jarl/
+lib/fjords/
     data.py      tables and constants: costs, yields, seasons, events, jarls
     rules.py     pure functions: dawn, every action, battle, watchers, honour,
                  renown, Yule. No database, no clock, no globals. Takes a
@@ -368,16 +368,16 @@ lib/jarl/
     scenes.py    which screen a jarl is on and which actions it offers
     npc.py       the five jarls' habits, as functions over rules
     sim.py       plays whole years with rules and npc; balance tests use it
-lib/routes/jarl_routes.py       GET /games/jarl, POST /games/jarl/act
-frontend/templates/jarl.html
-frontend/static/js/jarl.js      hotkeys only
-admin/jarl_map.py               the coast map generator (SVG)
+lib/routes/fjords_routes.py     GET /games/fjords, POST /games/fjords/act
+frontend/templates/fjords.html
+frontend/static/js/fjords.js    hotkeys only
+admin/fjords_map.py             the coast map generator (SVG)
 ```
 
 Carried over from the climb, where each of these earned its place:
 
 - **State lives in the database.** A realm is a JSON document in
-  `jarl_realms` with a `turn` counter; a year is a row in `jarl_years`;
+  `fjords_realms` with a `turn` counter; a year is a row in `fjords_years`;
   raids, pacts, boasts, watcher reports and Saga lines have tables of their
   own. Realms last a month and must survive restarts.
 - **Randomness and the clock are injected.** Tests script the dice.
@@ -393,16 +393,16 @@ Carried over from the climb, where each of these earned its place:
   on the last day applied, so a jarl who returns after a week gets seven
   dawns and one report.
 - **The five jarls and the market are advanced by the first request of the
-  day**, under a coast-wide `jarl_years.day` guard, so two simultaneous first
+  day**, under a coast-wide `fjords_years.day` guard, so two simultaneous first
   requests cannot run Sigrun's raids twice.
-- **The simulator drives the real rules**, and `tests/test_jarl_balance.py`
+- **The simulator drives the real rules**, and `tests/test_fjords_balance.py`
   pins the targets in §16.
 - CSRF, sessions, rate limits and escaping come from the BBS unchanged. The
   boast-wall is cleaned exactly as the climb's tavern wall is.
 
 ## 16. Balance
 
-`docs/jarldoms/balance_sim.py` is a spreadsheet with a loop: four fixed
+`docs/nine-fjords/balance_sim.py` is a spreadsheet with a loop: four fixed
 habits (farmer, raider, conqueror, turtle) play a 30-day year against each
 other with the numbers in this document. It is not the game and its jarls do
 not adapt, which is its known limit. What it established, in the order the
@@ -418,40 +418,63 @@ runs found it:
    land from equals, feasts, and keeping pacts.
 4. **Unlimited raids empty a coast.** One raider sailing a dozen times a day
    took every neighbour to under 100 folk. Three sailings a day, never the
-   same jarl twice, and thralls at one in fifty rather than one in twenty.
+   same jarl twice. (The model at that point also let raids take people;
+   review removed that, and the model now takes goods only.)
 5. **Land-clearing at two turns made raiding a trap for the raider**: the
    turns spent sailing were turns not spent growing, and loot piled up unspent.
    At one turn a raider who reinvests can keep pace. Whether they can *win*
    against an adaptive farmer is the first thing the real simulator has to
    answer.
 
-Last run, one seed, day 30:
+**The real simulator** (`lib/fjords/sim.py`, built in step 1) then took over
+with the real rules and the five jarls' habits playing every seat, and found
+three more things:
 
-| Jarl | Habit | Land | Folk | Huscarls | Silver | Renown |
-|---|---|---:|---:|---:|---:|---:|
-| Halvard | farmer | 131 | 102 | 6 | 34 | 1,346 |
-| Sigrun | raider | 60 | 789 | 153 | 8,900 | 1,028 |
-| Ketil | conqueror | 95 | 129 | 14 | 17 | 1,000 |
-| Ingirid | turtle | 69 | 171 | 45 | 2 | 772 |
+6. **A farmer who never arms is eaten, and one who arms is unbeatable.** With
+   the threshold for land-taking at 1.5, a week-old army took land from a
+   fresh realm every day, and the farmer lost every year; once the scripted
+   farmer answered a raid by doubling his guard and walling up, the aggressors
+   could take nothing and the farmer won every year. Real players arm after a
+   raid, so the reacting farmer is the honest model, and the **decisive ratio
+   is 2**, which is where the turtle and the farmer start trading years.
+7. **Aggressors must build to their target**, not to a fixed number.
+   Scripted raiders that stopped at 160 huscarls were harmless past day ten.
+8. **Feasts must not be free honour.** At +2 a day a farmer hit the honour
+   cap in three weeks; +1.
 
-Over 200 seeds the scripted farmer wins every one, and nobody is erased. The
-scripted defenders do not retrain what they lose, which is why their folk
-bleed; a player would. **Targets for the real simulator, which the balance
-tests will pin:**
+Where it stands after step 1, over 40 seeded years with a farmer, a raider,
+a conqueror and a turtle: the turtle and the farmer split the wins, about
+half each; the raider and the conqueror finish with around 90 steadings to
+the farmer's 160, without winning; nobody is erased (the smallest realm in
+any year kept 36 steadings); a farmer alone reaches about 177; a well-kept
+hold repels an equal raider every time; a jarl absent a week is untouched
+and catches up; playing every other day costs less than a third.
+
+**Not yet met:** the design wanted no habit above 60% of wins *and* the
+aggressive habits able to win. Scripted aggression does not win against a
+defender that reacts. The tests pin what is true now (§17's step 1); whether
+raiding and land-taking can win is the first question for real play, and
+the constants are in one file when the answer comes.
+
+**Targets the balance tests pin now:**
 
 - A farmer alone reaches **120–180 steadings** in a year.
-- Among adaptive bots, **no habit wins more than 60%** of years.
+- Among the four scripted habits, **no habit wins more than 65%** of years,
+  and at least two habits win some.
+- The aggressive habits are **viable**: their median land is at least 45% of
+  the leader's.
 - A realm keeping huscarls at half its steadings and a level-3 palisade
   **repels a raider of equal renown at least 70%** of the time.
 - **Nobody is ever erased**; nobody under the peace ever loses land.
+- A jarl absent a week is not sailed against and gets every missed dawn.
 - A jarl who plays every day and one who plays every other day are within
-  **a third** of each other's renown at Yule (the turn cap doing its job).
+  **a third** of each other's renown at Yule.
 
 ## 17. Build plan
 
 | Step | Deliverable | Done when |
 |---|---|---|
-| 1 | `data.py`, `rules.py`, `npc.py`, and the simulator driving them | Every rule has a test with scripted dice; the balance tests of §16 pass. |
+| 1 ✅ | `data.py`, `rules.py`, `npc.py`, and the simulator driving them | **Done 2026-09-23.** Every rule has a test with scripted dice (`tests/test_fjords_rules.py`); the balance tests pin §16's targets (`tests/test_fjords_balance.py`). |
 | 2 | Schema, `store.py`, dawn, the hall and every hall action, Saltvik | A jarl can be created and can clear, build, train, trade, feast, and wake tomorrow, through the routes, under test, and by keyboard in a real browser under the CSP. |
 | 3 | The sea: raids, land-taking, the three-sailings rule, the peace; the five jarls taking their turns | Two-player tests, including the silver-duplication case and the peace; a test bot beats Halvard and is beaten by Sigrun. |
 | 4 | The Thing: pacts, boasts, the Saga; watchers; events; honour | A year's worth of Saga reads as a story in a test bot's log. **Steps 1–4 are a complete game.** |
@@ -460,23 +483,51 @@ tests will pin:**
 
 Each step is independently shippable after step 2.
 
-## 18. Questions for review
+## 18. Review record
 
-1. **Title.** "The Jarldoms" is the working title. Others: *Nine Fjords*,
-   *Silver and Salt*, *Yule Reckoning*, *The Long Winter*. Or something else.
-2. **Thralls.** Raids taking people is the period, and the word is the
-   period's. It is written plainly and without relish. Keep, or make raids
-   take only goods?
-3. **Round length.** Thirty days, like the climb's first ascent. Shorter years
-   mean more Yules and more crowns; longer ones mean more room to come back.
-4. **The five jarls.** Five computer-run realms for a board of a handful of
-   players. Fewer, more, or none?
-5. **Honour caps at ±50** and counts double. Enough of a leash on bullying?
-6. **The map.** Worth building in step 6, or leave the Stone as a table?
-7. **Consent.** Every jarl is a target from day six; there is no opt-out
-   from being raided, because that is the game. The peace, the three-sailings
-   rule and the absence rule are the protections. Sufficient?
-8. **Federation.** This is the genre that ran inter-board leagues. Nothing
-   here depends on it, but if it is ever wanted, a jarl on another board is a
-   realm that can be sailed against with a delay. Design for it now (a realm
-   has a home board) or not?
+Reviewed by Ted on 2026-09-23. His answers:
+
+1. **Title: Nine Fjords.** ("The Jarldoms" was the working title.)
+2. **Raids take goods only.** No thralls. §6 and the model were changed to
+   match; the sailing-season bonus is a larger share of stores instead.
+3. **A year is 30 days.**
+4. **Five computer-run jarls.**
+5. Honour capped at ±50, counting double: no objection; stands.
+6. **Build the coast map** (§14, step 6).
+7. The peace, the three-sailings rule and the absence rule are **sufficient**
+   protection; no opt-out from being raided.
+8. **Design the federation hook now.** §19.
+
+## 19. Realms on other boards
+
+Nothing in the first build talks to another board, but the design leaves the
+door where the federation spec (`docs/federation/`) expects it, so that adding
+inter-board play later is a transport, not a rewrite.
+
+- **Every realm has a home.** `fjords_realms.home` is the board's federation
+  id, empty for realms on this board. A realm with a home elsewhere is a
+  snapshot: it is shown on the Stone with its board's name, it can be chosen
+  as a target, and it is never written to here.
+- **Battles are pure functions over snapshots.** `rules.sail()` takes two
+  realm snapshots and a `random.Random` and returns two things: the changes
+  to the attacker, and a **settlement** for the defender (silver, grain and
+  timber lost, huscarls and levy lost, steadings lost, the Saga line). For a
+  local defender the route applies the settlement at once through
+  `store.change`. For a defender abroad, the settlement is a message for the
+  relay, and the attacker's huscarls are "at sea" until the answer comes.
+- **The home board is the authority.** A settlement arriving from abroad is
+  applied by the defender's own board, with its own rules, and may be refused
+  (the target is under the peace there, or absent, or the pact was made after
+  the ship sailed). The attacker's board then reverses the attacker's side
+  from the answer. The **absence rule** already gives every raid an up-to-
+  three-day window of doubt, so a relay's delay changes nothing a player would
+  notice.
+- **Pacts and watchers** are messages of the same shape: an offer, an answer,
+  a report, each applied by the board that owns the realm it changes.
+- **The Stone reckons per board.** Each board crowns its own High King at
+  Yule; an inter-board league, if one is ever wanted, is a second stone kept
+  by the relay from the boards' reckonings.
+- What this costs now: a `home` column, one dispatch point in the route
+  (`if realm.home: queue it, else: apply it`), and the discipline that no
+  rule ever touches a defender's row directly. The relay, the message
+  formats and the trust model are the federation spec's, not this game's.

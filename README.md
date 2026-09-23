@@ -425,9 +425,9 @@ tests/
 ## Design documents
 
 - [`docs/long-climb/DESIGN.md`](docs/long-climb/DESIGN.md) — The Long Climb, as built.
-- [`docs/jarldoms/DESIGN.md`](docs/jarldoms/DESIGN.md) — The Jarldoms, a daily-turn
-  empire game of Norse jarls raiding each other by longship (draft, not built),
-  with the model that sized its economy.
+- [`docs/nine-fjords/DESIGN.md`](docs/nine-fjords/DESIGN.md) — Nine Fjords, a daily-turn
+  empire game of Norse jarls raiding each other by longship (approved, being
+  built), with the model that sized its economy.
 - [`docs/federation/`](docs/federation/) — a specification (parked, not built)
   for linking independently hosted boards through a relay that cannot read what
   it carries: threat model and wire protocol.

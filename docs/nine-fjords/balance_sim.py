@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A rough model of one round of The Jarldoms, to size the economy before it is built.
+"""A rough model of one round of Nine Fjords, to size the economy before it is built.
 
 Not the game: a spreadsheet with a loop. Four jarls with fixed habits play a
 30-day round against each other. The point is to see that a farmer's realm
@@ -38,7 +38,7 @@ SHIP_TURNS, SHIP_TIMBER, SHIP_SILVER, SHIP_CAPACITY = 2, 60, 40, 40
 RAID_TURNS, TAKE_TURNS = 3, 4
 HUSCARL_STRENGTH, LEVY_STRENGTH = 3.0, 1.0
 HOME_ADVANTAGE, PALISADE_BONUS = 1.2, 0.10
-RAID_SILVER_SHARE, RAID_GRAIN_SHARE, RAID_TIMBER_SHARE, RAID_THRALL_SHARE = 0.25, 0.25, 0.25, 0.02
+RAID_SILVER_SHARE, RAID_GRAIN_SHARE, RAID_TIMBER_SHARE = 0.25, 0.25, 0.25
 RAIDS_PER_DAY = 3              # sailings a day, and never the same realm twice
 LAWS_PEACE_LAND = 30           # a realm this small cannot lose land
 TAKE_LAND_SHARE, TAKE_RATIO_NEEDED = 0.10, 1.5
@@ -168,15 +168,13 @@ def raid(rng, r, target):
     ratio = battle(rng, r, target, warriors)
     if ratio >= 1:
         s, g = target.silver * RAID_SILVER_SHARE, target.grain * RAID_GRAIN_SHARE
-        t, thralls = target.timber * RAID_TIMBER_SHARE, int(target.folk * RAID_THRALL_SHARE)
+        t = target.timber * RAID_TIMBER_SHARE
         target.silver -= s
         target.grain -= g
         target.timber -= t
-        target.folk -= thralls
         r.silver += s
         r.grain += g
         r.timber += t
-        r.folk += thralls
         if target.renown() < r.renown() * 0.5:
             r.honour -= 2                        # no glory in robbing the small
     return ratio
@@ -216,7 +214,7 @@ def farmer(rng, r, others):
 
 
 def raider(rng, r, others):
-    """Ships and huscarls, raids the richest neighbour every day it can, houses the thralls."""
+    """Ships and huscarls, raids the richest neighbour every day it can, reinvests the loot."""
     while r.turns >= 3:
         if r.ships * SHIP_CAPACITY < r.huscarls + 20 and ship(r):
             continue

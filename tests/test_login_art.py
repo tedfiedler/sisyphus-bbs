@@ -1,8 +1,7 @@
-"""The opening-screen art is generated (admin/login_art.py), not hand-edited."""
+"""The opening-screen picture is generated (admin/login_art.py), not hand-edited."""
 
 import importlib.util
 import re
-from html import unescape
 from pathlib import Path
 
 import pytest
@@ -23,79 +22,75 @@ def test_the_template_holds_exactly_what_the_generator_makes():
     )
 
 
-def test_the_art_fits_its_box_and_the_type_scales_to_fit_a_phone():
-    lines = login_art.as_text(login_art.compose()).split("\n")
-    widest = max(len(line) for line in lines)
-    assert widest <= login_art.W == 60
-    assert all(line == line.rstrip() for line in lines)
-    assert "b u l l e t i n   b o a r d   s y s t e m" in lines[5]
-
-    # The stylesheet's divisor must cover every column, or a phone scrolls sideways.
-    css = (config.STATIC_DIR / "style.css").read_text()
-    divisor = float(re.search(r"font-size: min\(11px, calc\(\(100vw - 40px\) / ([\d.]+)\)\)", css).group(1))
-    assert divisor >= widest * 0.6
-
-
-def test_the_title_spells_the_name():
-    title = login_art.TITLE.split("\n")
-    assert len(title) == 5 and len({len(row) for row in (r.ljust(54) for r in title)}) == 1
-    # Each letter is its own column block; read the glyph widths back off the top row.
-    assert "".join(ch for ch in "SISYPHUS") == "SISYPHUS"
-    widths = [len(login_art._GLYPHS[ch][0]) for ch in "SISYPHUS"]
-    assert sum(widths) == 54 and all(len(set(map(len, login_art._GLYPHS[ch]))) == 1 for ch in "SISYPHU")
-
-
-def test_he_is_built_like_a_person():
-    """A cell is twice as tall as wide, so compare in units of column-widths."""
-    grid = login_art.compose()
-    man = [(r, c) for r, row in enumerate(grid) for c, (_, layer) in enumerate(row) if layer == "man"]
-    height = (max(r for r, _ in man) - min(r for r, _ in man) + 1) * 2
-    arm_row = min(r for r, _ in man) + 2
-    arms = max(c for r, c in man if r == arm_row) - min(c for r, c in man if r == arm_row)
-    assert height >= 18
-    assert arms <= height / 2, f"arms {arms} columns on a body {height} column-widths tall"
+def _cells(screen, colours):
+    return [(y, x) for y, row in enumerate(screen.px) for x, c in enumerate(row) if c in colours]
 
 
 def test_the_picture_is_what_it_says_it_is():
-    grid = login_art.compose()
-    layers = {layer for row in grid for _, layer in row if layer}
-    assert layers == {"title", "sub", "hill", "stone", "man", "star"}
-
-    def cells(layer):
-        return [(r, c) for r, row in enumerate(grid) for c, (_, l) in enumerate(row) if l == layer]
-
-    hill, stone, man = cells("hill"), cells("stone"), cells("man")
-    # The hillside rises to the right, as far as it can be seen before the stone hides it.
-    last_visible = max(c for _, c in hill)
-    assert min(r for r, c in hill if c < 8) > max(r for r, c in hill if c > last_visible - 4) + 4
+    s = login_art.compose()
+    hill = _cells(s, {login_art.GREEN, login_art.LGREEN})
+    stone = _cells(s, {login_art.LGREY, login_art.DGREY})
+    man = _cells(s, set(login_art.HERO_COLOURS.values()) | {login_art.TAN})
+    # The subtitle is light grey too; the stone is what is below the text.
+    stone = [(y, x) for y, x in stone if y > 56]
+    # The hillside rises to the right.
+    assert min(y for y, x in hill if x < 4) > min(y for y, x in hill if x > login_art.SW - 4) + 60
     # He is below and to the left of the stone, and his hands reach it.
-    assert max(c for _, c in man) + 1 >= min(c for _, c in stone)
-    assert min(c for _, c in man) < min(c for _, c in stone)
-    # His feet are on the hill: the lowest part of him touches a hill cell.
-    foot_row, foot_col = max(man)
-    assert any(abs(r - foot_row) <= 1 and abs(c - foot_col) <= 2 for r, c in hill)
-    # The stone's outline is whole: nothing else was drawn over its left edge.
-    left_edge = {r: min(c for rr, c in stone if rr == r) for r in {r for r, _ in stone}}
-    assert all(grid[r][c][1] == "stone" for r, c in left_edge.items())
+    assert max(x for _, x in man) + 1 >= min(x for _, x in stone)
+    assert min(x for _, x in man) < min(x for _, x in stone)
+    # His feet are on the hill.
+    foot_y, foot_x = max(man)
+    assert any(abs(y - foot_y) <= 2 and abs(x - foot_x) <= 4 for y, x in hill)
+    # The stone is whole: nothing was drawn over its left edge.
+    left_edge = {y: min(x for yy, x in stone if yy == y) for y in {y for y, _ in stone}}
+    assert all(s.px[y][x] in (login_art.LGREY, login_art.DGREY) for y, x in left_edge.items())
+    # And it is lit from the upper left.
+    assert s.px[min(left_edge) + 6][left_edge[min(left_edge) + 6] + 8] == login_art.LGREY
 
 
-def test_every_layer_has_a_colour_and_none_is_inline():
+def test_he_has_a_face():
+    eye = [(y, x) for y, row in enumerate(login_art.HERO) for x, ch in enumerate(row) if ch == "k"]
+    hair = [(y, x) for y, row in enumerate(login_art.HERO) for x, ch in enumerate(row) if ch == "h"]
+    skin = [(y, x) for y, row in enumerate(login_art.HERO) for x, ch in enumerate(row) if ch == "f"]
+    assert eye and hair and skin
+    assert min(y for y, _ in hair) < min(y for y, _ in skin)          # hair on top
+    assert all((y, x - 1) in skin or (y, x + 1) in skin for y, x in eye)        # the eye is in the face
+    assert set(login_art.HERO_COLOURS) == {"h", "f", "k", "w"}
+
+
+def test_the_title_spells_the_name_in_the_pc_font():
+    for ch in login_art.TITLE + login_art.SUBTITLE:
+        assert ch in login_art.GLYPHS and len(login_art.GLYPHS[ch]) == 8, ch
+    s = login_art.compose()
+    # The title's top row of pixels is yellow and nothing else is on that row.
+    row = s.px[10 + 3]
+    assert set(c for c in row if c is not None) == {login_art.YELLOW}
+    # The word sits in a centred span of eight three-times glyph cells.
+    inked = [x for x, c in enumerate(row) if c is not None]
+    span = len(login_art.TITLE) * 8 * 3
+    assert (login_art.SW - span) // 2 <= inked[0] and inked[-1] < (login_art.SW + span) // 2
+
+
+def test_only_the_palette_is_used_and_nothing_is_inline():
+    svg = login_art.as_svg(login_art.compose())
+    fills = set(re.findall(r'fill="(#[0-9A-Fa-f]{6})"', svg))
+    assert fills <= set(login_art.PALETTE)
+    assert "style=" not in svg and "<script" not in svg
+    assert 'shape-rendering="crispEdges"' in svg and 'viewBox="0 0 320 200"' in svg
+
+
+def test_the_stylesheet_gives_the_picture_its_size():
     css = (config.STATIC_DIR / "style.css").read_text()
-    for layer in ("title", "sub", "hill", "stone", "man", "star"):
-        assert f".art-{layer}" in css, layer
-    rule = css[css.index(".login-box pre {"):]
+    rule = css[css.index(".login-art svg {"):]
     rule = rule[:rule.index("}")]
-    # Centring each line shears the art; table display eats the newlines between spans.
-    assert "text-align: center" not in rule and "display: table" not in rule
-    assert "style=" not in login_art.as_html(login_art.compose())
+    assert f"max-width: {login_art.DISPLAY_WIDTH}px" in rule and "height: auto" in rule
 
 
 @pytest.mark.asyncio
 async def test_the_page_serves_the_art_intact():
     async with anon_client() as client:
         page = (await client.get("/")).text
-    pre = re.search(r"<pre[^>]*>(.*?)</pre>", page, re.DOTALL).group(1)
-    assert "{%" not in pre and "login-art" not in pre          # Jinja's markers are gone
-    shown = unescape(re.sub(r"<[^>]+>", "", pre))
-    assert shown == login_art.as_text(login_art.compose())
-    assert 'role="img"' in page and "pushing a boulder" in page
+    svg = re.search(r"<svg.*?</svg>", page, re.DOTALL).group(0)
+    assert "{%" not in svg and "login-art:" not in svg                 # Jinja's markers are gone
+    assert svg == login_art.as_svg(login_art.compose())
+    assert 'role="img"' in svg and "pushing his boulder" in svg

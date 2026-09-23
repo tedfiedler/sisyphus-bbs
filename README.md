@@ -371,15 +371,18 @@ the comment on it before touching it.
 
 ## The opening screen
 
-The ASCII art on the login page is generated, not hand-edited:
+The picture on the login page is a 1987 Sierra-style scene: sixteen EGA
+colours, double-wide pixels, the PC 8x8 font for the title, and Sisyphus with
+his boulder. It is generated, not hand-edited, and written into the page as an
+SVG of rectangles so it is crisp at any size:
 
 ```sh
-.venv/bin/python admin/login_art.py            # look at it as text
+.venv/bin/python admin/login_art.py            # a rough look at it as text
 .venv/bin/python admin/login_art.py --write    # put it into the login page
 ```
 
-Change the sprites in `admin/login_art.py`. A test fails if the page and the
-generator disagree.
+Change the sprite or the scene in `admin/login_art.py`. A test fails if the
+page and the generator disagree.
 
 ## Development
 

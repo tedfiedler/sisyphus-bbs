@@ -172,7 +172,8 @@ update, or use `sisyphus-update`; `.env`, the database and uploads are never
 touched. `--help` lists the options, including `--self-signed` for a machine
 without public DNS yet.
 
-Copy the backups somewhere off the machine; the script only makes them. For a
+Copy the backups somewhere off the machine; the script only makes them. An
+uptime monitor can watch `https://your.host/` with GET or HEAD; both answer 200. For a
 private fork, `--deploy-key` installs a read-only GitHub deploy key for the
 clone.
 

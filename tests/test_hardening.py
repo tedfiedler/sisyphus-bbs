@@ -456,3 +456,23 @@ async def test_static_assets_stay_cacheable():
         resp = await client.get("/static/style.css")
     assert resp.status_code == 200
     assert resp.headers.get("cache-control") != "no-store"
+
+
+# ---------------------------------------------------------------------------
+# HEAD
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_head_is_answered_like_get():
+    """Uptime monitors send HEAD; it gets GET's status and headers."""
+    admin = await auth.register_user("admin", "password123")
+    async with anon_client() as client:
+        got, head = await client.get("/"), await client.head("/")
+        assert (head.status_code, head.headers["content-length"]) == (200, got.headers["content-length"])
+        assert head.headers["content-security-policy"] == got.headers["content-security-policy"]
+        assert (await client.head("/home", follow_redirects=False)).status_code == 302
+    async with await client_for(admin["id"]) as client:
+        assert (await client.head("/games/climb")).status_code == 200
+        # A POST-only URL still sends HEAD, like GET, to the page above it.
+        assert (await client.head("/games/climb/act", follow_redirects=False)).status_code == 303
+

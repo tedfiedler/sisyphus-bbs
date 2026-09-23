@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import http_exception_handler
+from fastapi.routing import APIRoute
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -136,3 +137,10 @@ app.include_router(chat_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(game_routes.router)
 app.include_router(climb_routes.router)
+
+# Uptime monitors send HEAD. FastAPI registers a GET route for GET alone, so
+# let every one of them answer HEAD from the same handler; uvicorn sends the
+# headers and drops the body, as the method requires.
+for _route in app.routes:
+    if isinstance(_route, APIRoute) and "GET" in _route.methods:
+        _route.methods.add("HEAD")

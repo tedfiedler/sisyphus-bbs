@@ -21,7 +21,11 @@ python3 -m venv .venv
 ```
 
 **The first account registered becomes the superadmin.** Register yours before
-telling anyone the address.
+telling anyone the address, or make it first from the command line:
+
+```sh
+.venv/bin/python admin/create_superadmin.py yourname     # asks for a password
+```
 
 Needs Python 3.12 or newer. `requirements.txt` pins the exact versions the test
 suite passes against; `pyproject.toml` holds the minimum supported versions.
@@ -72,6 +76,7 @@ SISYPHUS_NAME=Sisyphus BBS
 | `SISYPHUS_DB` | `db/sisyphus.db` | The SQLite database file. |
 | `SISYPHUS_FILES` | `file_store/` | Where uploaded files are kept. |
 | `SISYPHUS_SESSION_HOURS` | `24` | How long a login lasts. |
+| `SISYPHUS_INVITE_ONLY` | off | Set to `1` and nobody registers without an invitation code. See Invitations. |
 | `SISYPHUS_TZ` | the server's zone | IANA zone (e.g. `America/Chicago`) that decides when a game day turns over in *The Long Climb*. |
 | `SISYPHUS_SSL_CERT` | `certs/cert.pem` | TLS certificate. See TLS below. |
 | `SISYPHUS_SSL_KEY` | `certs/key.pem` | TLS private key. |
@@ -142,6 +147,35 @@ If nginx, Caddy, or similar sits in front and terminates TLS:
   `SISYPHUS_ALLOWED_ORIGINS=https://bbs.example.org` (comma-separated for several).
 - The proxy must pass WebSocket upgrades for `/ws/chat`.
 
+## Deploying on a server
+
+`deploy/install-debian.sh` puts the whole thing on a Debian 13 machine behind
+nginx with a Let's Encrypt certificate. Point DNS at the server first, then:
+
+```sh
+sudo ./deploy/install-debian.sh --domain bbs.example.org --email you@example.org --admin yourname
+```
+
+With `--admin yourname` it also creates the superadmin account before the site
+is reachable, asking for the password on the terminal; without it, the first
+person to register gets the board. Registration is invite-only unless you pass
+`--open`.
+
+It creates a `sisyphus` system user, checks the code out into `/opt/sisyphus`,
+writes `.env` with a fresh secret and `SISYPHUS_TRUST_PROXY=1`, installs a
+locked-down systemd service, configures nginx (TLS 1.2/1.3 only, HTTP/2, the
+chat WebSocket), gets the certificate and renews it from cron, opens only SSH,
+80 and 443 in ufw, runs fail2ban for sshd and for repeated failed logins to the
+board, and sets up log rotation, a nightly backup in `/var/backups/sisyphus`,
+and unattended security upgrades. Run it again to
+update, or use `sisyphus-update`; `.env`, the database and uploads are never
+touched. `--help` lists the options, including `--self-signed` for a machine
+without public DNS yet.
+
+Copy the backups somewhere off the machine; the script only makes them. For a
+private fork, `--deploy-key` installs a read-only GitHub deploy key for the
+clone.
+
 ## Resetting everything
 
 ```sh
@@ -151,7 +185,7 @@ If nginx, Caddy, or similar sits in front and terminates TLS:
 ```
 
 This deletes the database **and every uploaded file**, and the next account
-registered becomes superadmin.
+registered becomes superadmin (or run `admin/create_superadmin.py`).
 
 **Stop the server first.** A running server keeps the old database open, so
 deleting the file underneath it changes nothing it can see: every account, the
@@ -178,7 +212,7 @@ Also keep a copy of `.env` somewhere safe and private.
 | Level | Who | Can |
 |---|---|---|
 | 0 | Everyone who registers | Read and post on boards, like posts, chat, DM, play games. |
-| 1 | Admins | Also: create boards and chat channels, delete posts, threads, files and chat messages, broadcast announcements, delete regular users, grant file access, post links, and use the game's sysop tools. |
+| 1 | Admins | Also: create boards and chat channels, delete posts, threads, files and chat messages, broadcast announcements, delete regular users, grant file access, make invitations, post links, and use the game's sysop tools. |
 | 2 | The superadmin (the first account) | Also: promote and demote admins. Cannot be demoted or deleted through the site. |
 
 **Regular users cannot post links** on boards, in chat, or in profiles; admins
@@ -192,6 +226,19 @@ always have access. Uploads are limited to 10 MB and to a list of document,
 image, archive, audio and video types.
 
 New passwords need at least 8 characters (at most 72 bytes).
+
+### Invitations
+
+With `SISYPHUS_INVITE_ONLY=1` in `.env`, the New User tab asks for an
+invitation code and refuses to register without one. Admins make codes on the
+Admin page: one button, an optional note of who it is for, and the page shows
+the link to hand over (`https://your.host/?invite=CODE`). A code admits one
+person and expires after seven days; open ones can be revoked. Who invited
+whom is recorded on the account. Turn the setting off and registration is
+open again; a code still works and still records the introduction.
+
+On an empty database nobody can make a code, so create the superadmin from
+the command line first (Quick start), or let the deploy script do it.
 
 ## Limits worth knowing
 
@@ -267,9 +314,9 @@ src/app.py               entry point: logging, database, TLS, uvicorn
 lib/web_server.py        the FastAPI app, middleware, routers
 lib/routes/              one module per area: auth, boards, chat, files, admin, games, climb
 lib/climb/               The Long Climb: data, rules, scenes, text, store, sim
-lib/                     auth, boards, chat, files, csrf, ratelimit, bodylimit, db, config, ...
+lib/                     auth, boards, chat, files, invites, csrf, ratelimit, bodylimit, db, config, ...
 frontend/templates/      Jinja pages        frontend/static/   CSS and JS
-admin/                   reset_db.py, login_art.py
+admin/                   reset_db.py, create_superadmin.py, login_art.py
 docs/                    design documents
 tests/
 ```

@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
     last_seen TIMESTAMP,
     about_me TEXT DEFAULT '',
     landing_message TEXT DEFAULT '',
-    last_dm_seen TIMESTAMP
+    last_dm_seen TIMESTAMP,
+    invited_by INTEGER REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS boards (
@@ -105,6 +106,19 @@ CREATE TABLE IF NOT EXISTS login_days (
     user_id INTEGER NOT NULL REFERENCES users(id),
     login_date TEXT NOT NULL,
     UNIQUE(user_id, login_date)
+);
+
+-- Invitations (lib/invites.py). A code is single-use: used_at is set the
+-- instant it is claimed, used_by once the account it produced exists.
+CREATE TABLE IF NOT EXISTS invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    used_by INTEGER REFERENCES users(id),
+    used_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS dm_channel_seen (
@@ -207,6 +221,8 @@ async def _migrate(db: aiosqlite.Connection):
         await db.execute("ALTER TABLE users ADD COLUMN last_dm_seen TIMESTAMP")
     if "file_upload_allowed" not in columns:
         await db.execute("ALTER TABLE users ADD COLUMN file_upload_allowed INTEGER DEFAULT 0")
+    if "invited_by" not in columns:
+        await db.execute("ALTER TABLE users ADD COLUMN invited_by INTEGER REFERENCES users(id)")
 
     cursor = await db.execute("PRAGMA table_info(game_scores)")
     gs_columns = {row[1] for row in await cursor.fetchall()}

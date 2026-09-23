@@ -4,15 +4,16 @@ All endpoints require admin-level access (access_level >= 1). Promotion
 and demotion of users require superadmin access (access_level == 2).
 """
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from lib import auth
+from lib import auth, config, invites
 from lib import boards
 from lib import files as file_mod
 from lib.chat import delete_message
 from lib.db import get_db
 from lib.deps import require_admin
+from lib.proxy import is_https
 from lib.templating import templates, _add_globals
 
 router = APIRouter()
@@ -20,11 +21,40 @@ router = APIRouter()
 
 @router.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request, user: dict = Depends(require_admin)):
-    """Render the admin dashboard with the full user list."""
+    """Render the admin dashboard: the user list and the invitations."""
     users = await auth.list_users()
+    # The link a new member is handed. Built from what the visitor sees, so
+    # it is right behind a proxy as well as on a bare server.
+    scheme = "https" if is_https(request) else "http"
+    invite_base = f"{scheme}://{request.headers.get('host', request.url.netloc)}/?invite="
     return templates.TemplateResponse(
-        "admin.html", _add_globals(request, {"user": user, "users": users})
+        "admin.html",
+        _add_globals(request, {
+            "user": user, "users": users,
+            "invites": await invites.list_all(),
+            "invite_base": invite_base,
+            "invite_only": config.INVITE_ONLY,
+            "invite_days": invites.INVITE_DAYS,
+        }),
     )
+
+
+@router.post("/admin/invites")
+async def admin_invite_create(
+    request: Request,
+    note: str = Form("", max_length=invites.NOTE_MAX),
+    user: dict = Depends(require_admin),
+):
+    """Make one invitation code. The note is a reminder of who it is for."""
+    await invites.create(user["id"], note)
+    return RedirectResponse("/admin", status_code=302)
+
+
+@router.post("/admin/invites/{invite_id}/revoke")
+async def admin_invite_revoke(request: Request, invite_id: int, user: dict = Depends(require_admin)):
+    """Withdraw an invitation that has not been used."""
+    await invites.revoke(invite_id)
+    return RedirectResponse("/admin", status_code=302)
 
 
 @router.post("/admin/users/{user_id}/promote")

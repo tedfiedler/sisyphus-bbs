@@ -69,4 +69,54 @@
     <p class="meta">No users found.</p>
     {% endif %}
 </div>
+
+<div class="box">
+    <h2>Invitations</h2>
+    {% if invite_only %}
+    <p class="meta">Registration is invite-only. Each code admits one person and is good for {{ invite_days }} days.</p>
+    {% else %}
+    <p class="meta">Registration is open (set <code>SISYPHUS_INVITE_ONLY=1</code> to close it). A code still works, and records who invited whom.</p>
+    {% endif %}
+    <form class="inline-form" method="post" action="/admin/invites">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="text" name="note" placeholder="Who is it for? (optional)" maxlength="80">
+        <button type="submit" class="btn-small">New invitation</button>
+    </form>
+    {% if invites %}
+    <table>
+        <tr>
+            <th>Link</th>
+            <th>For</th>
+            <th>Made by</th>
+            <th>Expires</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+        {% for i in invites %}
+        <tr>
+            <td>{% if i.open %}<a href="{{ invite_base }}{{ i.code }}">{{ invite_base }}{{ i.code }}</a>{% else %}<span class="meta">{{ i.code }}</span>{% endif %}</td>
+            <td>{{ i.note or '-' }}</td>
+            <td>{{ i.created_by_name }}</td>
+            <td class="meta">{{ i.expires_at }}</td>
+            <td>
+                {% if i.used_by_name %}used by {{ i.used_by_name }}
+                {% elif i.used_at %}<span class="meta">being used</span>
+                {% elif i.expired %}<span class="meta">expired</span>
+                {% else %}open{% endif %}
+            </td>
+            <td>
+                {% if not i.used_at %}
+                <form class="inline-form" method="post" action="/admin/invites/{{ i.id }}/revoke">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn-small">Revoke</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="meta">No invitations yet.</p>
+    {% endif %}
+</div>
 {% endblock %}

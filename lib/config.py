@@ -18,6 +18,8 @@ Environment variables:
                            sets X-Forwarded-For and X-Forwarded-Proto, so rate
                            limiting sees the real client address and cookies
                            are marked Secure when the proxy terminates TLS.
+    SISYPHUS_INVITE_ONLY   Set to 1 to require an invitation code to
+                           register. Admins make codes on the Admin page.
     SISYPHUS_TZ            IANA time zone (e.g. America/Chicago) that decides
                            when a game day turns over. Default: the server's
                            local time.
@@ -52,6 +54,8 @@ ALLOWED_ORIGINS = frozenset(
 )
 
 TZ = os.getenv("SISYPHUS_TZ", "").strip() or None
+
+INVITE_ONLY = os.getenv("SISYPHUS_INVITE_ONLY", "").strip().lower() in {"1", "true", "yes"}
 
 TEMPLATES_DIR = BASE_DIR / "frontend" / "templates"
 STATIC_DIR = BASE_DIR / "frontend" / "static"

@@ -35,11 +35,11 @@
     {% endif %}
 
     <div class="tabs">
-        <button type="button" class="tab active" data-tab="login">Login</button>
-        <button type="button" class="tab" data-tab="register">New User</button>
+        <button type="button" class="tab{% if not show_register %} active{% endif %}" data-tab="login">Login</button>
+        <button type="button" class="tab{% if show_register %} active{% endif %}" data-tab="register">New User</button>
     </div>
 
-    <div id="login-form">
+    <div id="login-form"{% if show_register %} class="hidden"{% endif %}>
         <form method="post" action="/login">
             <input type="text" name="username" placeholder="Username" required autofocus>
             <input type="password" name="password" placeholder="Password" required>
@@ -47,8 +47,14 @@
         </form>
     </div>
 
-    <div id="register-form" class="hidden">
+    <div id="register-form"{% if not show_register %} class="hidden"{% endif %}>
+        {% if invite_only %}
+        <p class="meta">This board is invite-only. You need a code from the sysop.</p>
+        {% endif %}
         <form method="post" action="/register">
+            {% if invite_only or invite %}
+            <input type="text" name="invite" placeholder="Invitation code" value="{{ invite }}" maxlength="64"{% if invite_only %} required{% endif %}>
+            {% endif %}
             <input type="text" name="username" placeholder="Username" required minlength="2" maxlength="32">
             <input type="password" name="password" placeholder="Password" required minlength="8" maxlength="72">
             <input type="email" name="email" placeholder="Email (optional)">

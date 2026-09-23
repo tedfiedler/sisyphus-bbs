@@ -282,6 +282,12 @@ async def delete_user(user_id: int, reassign_channels_to: int | None = None):
                   "climb_players", "climb_news", "climb_wall"):
         await db.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
 
+    # Invitations they made go with them; ones they redeemed, and the people
+    # they brought in, just lose the reference.
+    await db.execute("DELETE FROM invites WHERE created_by = ?", (user_id,))
+    await db.execute("UPDATE invites SET used_by = NULL WHERE used_by = ?", (user_id,))
+    await db.execute("UPDATE users SET invited_by = NULL WHERE invited_by = ?", (user_id,))
+
     await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
     await db.commit()
 

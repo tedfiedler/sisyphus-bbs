@@ -9,8 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from lib import config
-from lib import auth
+from lib import auth, config, invites
 from lib.content_filter import contains_url
 from lib.deps import require_user
 from lib.models import ProfileText, UserCreate, UserLogin, validate
@@ -40,6 +39,26 @@ def _session_redirect(request: Request, token: str) -> RedirectResponse:
     return resp
 
 
+def _login_page(request: Request, *, error: str | None = None, invite: str = "",
+                show_register: bool = False, status_code: int = 200):
+    """The landing page.
+
+    Someone who arrived by an invitation link starts on the New User tab
+    with the code already filled in; so does anyone whose registration
+    just failed, with what they typed still there.
+    """
+    invite = invite.strip()[:invites.CODE_MAX]
+    context = {
+        "error": error,
+        "invite_only": config.INVITE_ONLY,
+        "invite": invite,
+        "show_register": show_register or bool(invite),
+    }
+    return templates.TemplateResponse(
+        "login.html", _add_globals(request, context), status_code=status_code,
+    )
+
+
 def _is_recently_seen(profile_user: dict | None) -> bool:
     """Return True if the profile's last_seen timestamp is within five minutes."""
     if not profile_user or not profile_user.get("last_seen"):
@@ -56,32 +75,53 @@ async def index(request: Request):
     user = await auth.get_user_by_token(token) if token else None
     if user:
         return RedirectResponse("/home", status_code=302)
-    return templates.TemplateResponse("login.html", _add_globals(request))
+    return _login_page(request, invite=request.query_params.get("invite", ""))
 
 
 @router.post("/register")
-async def register(request: Request, username: str = Form(), password: str = Form(), email: str = Form("")):
-    """Create a new user account, authenticate, and set the session cookie."""
+async def register(
+    request: Request,
+    username: str = Form(),
+    password: str = Form(),
+    email: str = Form(""),
+    invite: str = Form("", max_length=invites.CODE_MAX),
+):
+    """Create a new user account, authenticate, and set the session cookie.
+
+    On an invite-only board the code is the door. It is claimed before the
+    account is made, so two people cannot both get in on one code, and given
+    back if the name turns out to be taken. On an open board a code is
+    optional; a valid one still records who invited whom.
+    """
     client = client_key(request)
     if _register_limiter.is_limited(client):
-        return templates.TemplateResponse(
-            "login.html",
-            _add_globals(request, {"error": "Too many accounts created. Try again later."}),
-            status_code=429,
+        return _login_page(
+            request, error="Too many accounts created. Try again later.",
+            invite=invite, show_register=True, status_code=429,
         )
     _register_limiter.record(client)
     form, error = validate(UserCreate, username=username, password=password, email=email)
     if error:
-        return templates.TemplateResponse(
-            "login.html", _add_globals(request, {"error": error}), status_code=400,
-        )
+        return _login_page(request, error=error, invite=invite, show_register=True, status_code=400)
     username, password, email = form.username, form.password, form.email
+
+    invite_id = await invites.claim(invite) if invite.strip() else None
+    if config.INVITE_ONLY and invite_id is None:
+        if invite.strip():
+            error = "That invitation code is not valid. It may have been used already, or expired."
+        else:
+            error = "This board is invite-only. You need an invitation code to register."
+        return _login_page(request, error=error, invite=invite, show_register=True, status_code=403)
+
     result = await auth.register_user(username, password, email)
     if result is None:
-        return templates.TemplateResponse(
-            "login.html", _add_globals(request, {"error": "Username already taken"}),
-            status_code=400,
+        if invite_id is not None:
+            await invites.release(invite_id)
+        return _login_page(
+            request, error="Username already taken", invite=invite, show_register=True, status_code=400,
         )
+    if invite_id is not None:
+        await invites.assign(invite_id, result["id"])
     # authenticate() rather than using `result` directly: it also records the
     # first login day and last_login.
     user = await auth.authenticate(username, password) or result

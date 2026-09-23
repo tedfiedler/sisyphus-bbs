@@ -626,3 +626,411 @@ DOOR_SHUT = "You close the door on {name}. They will not be told. Nothing they s
 DOOR_OPENED = "You open the door to {name} again."
 DIVORCED = "You and {name} are no longer married. Charm -2."
 MAIL_DIVORCED = "{name} has ended your marriage."
+
+# Every creature on the Slopes: what you see when it steps onto the path, and
+# the line when it is beaten. Keyed by the names in data.CREATURES; a test
+# checks the two lists agree. Beaten is not always dead: most of these have
+# somewhere else to be.
+FOES = {
+    # The Foothills
+    "Irritable Goat": (
+        "It has the beard of a philosopher and the temper of one who has just been asked to explain himself. It lowers its head.",
+        "It wanders off to butt a fence post instead, which was probably what it wanted all along.",
+    ),
+    "Olive Thief": (
+        "A boy with a sack of somebody else's olives and a stick he has clearly practised with. He decides you look like the owner.",
+        "He drops the sack and runs. The olives roll downhill toward their rightful grove.",
+    ),
+    "Tipsy Satyr": (
+        "He has been at the new wine since sunrise and is delighted to see you, in the way that ends in a fight. His hooves are unsteady. His fists are not.",
+        "He sits down heavily, sings one verse, and is asleep before the second.",
+    ),
+    "Stray Hound": (
+        "Ribs like a lyre, eyes like a debt collector. It has decided your satchel smells of dinner.",
+        "It backs off with its ears flat and goes to lie in the road, where it will be somebody else's problem.",
+    ),
+    "Road Bandit": (
+        "He steps out from behind the milestone with a knife and a speech he has clearly used before. The speech is not good.",
+        "He drops the knife and runs for the milestone, having remembered urgent business behind it.",
+    ),
+    "Deserter Hoplite": (
+        "The shield is dented, the spear is real, and the man behind them has not slept since he stopped taking orders. He does not want a witness.",
+        "He sits down on his shield in the road and does not look up as you go. The war can have him back.",
+    ),
+    "Wild Boar": (
+        "It comes out of the scrub sideways, which is how boars come out of everything. The tusks are yellow and have been used.",
+        "It crashes back into the scrub, leaving a furrow you could plant.",
+    ),
+    "Overzealous Tax Collector": (
+        "He has a ledger, a cudgel, and a strong opinion that everyone on this road owes something. He opens the ledger to a fresh page.",
+        "He closes the ledger, writes 'paid' against a name that is not yours, and takes the long way back to town.",
+    ),
+    # The Olive Terraces
+    "Terrace Viper": (
+        "Grey as the wall it lies along, and warm from the stone. It only looks like a crack until it moves.",
+        "It pours itself back into the wall. The wall keeps its secrets.",
+    ),
+    "Mob of Crows": (
+        "They come up off the terrace all at once, more of them than seems fair, all shouting the same accusation.",
+        "They scatter into the olive trees and go on shouting about you from a safe distance.",
+    ),
+    "Angry Beekeeper": (
+        "Someone has upset his hives, and you are the first person he has met since. He carries a smoker and swings it like a censer of wrath.",
+        "He decides the bees are the more pressing matter and goes back to them, still muttering.",
+    ),
+    "Grove Poacher": (
+        "She is up a ladder with a beating-stick when you arrive, knocking down olives that are not hers. She comes down the ladder fast.",
+        "She takes the ladder and leaves the olives. Ladders are harder to replace.",
+    ),
+    "Scarecrow That Moved": (
+        "It was a stick and a cloak and a gourd for a head, and then it was not. It walks like something that learned walking from a description.",
+        "It comes apart at the seams, and the gourd rolls away downhill, still looking pleased.",
+    ),
+    "Cattle Rustler": (
+        "He is leading someone's ox by the ring, at speed, and the ox is not enthusiastic. He lets go of the ox and draws a hook-knife.",
+        "He leaves the ox. The ox looks at you with the expression of one who has known worse owners.",
+    ),
+    "Sow with Piglets": (
+        "The piglets are adorable. That is the trap. Their mother is the size of a cart and has counted them.",
+        "She gathers her piglets with a series of grunts and takes them off through the rows. The piglets are still adorable.",
+    ),
+    "Landlord's Bailiff": (
+        "He has a writ, a bodyguard's build, and no interest in whose land you think this is. He rolls the writ up. It is heavier than paper.",
+        "He unrolls the writ, checks a name, says 'wrong terrace,' and leaves as if nothing had happened.",
+    ),
+    # The Goat Tracks
+    "Cliff Ram": (
+        "It stands on a ledge no wider than your hand and regards you as a trespasser on its stairs. Then it comes down them at a run.",
+        "It bounds back up to its ledge and has forgotten you before it gets there.",
+    ),
+    "Pebble Daimon": (
+        "A small spirit in a small stone, chiefly interested in getting under your foot at the worst moment. It has friends.",
+        "The pebble rolls away downhill, gathering no moss and no allies.",
+    ),
+    "Goat-Rustling Satyr": (
+        "He has three goats on a rope and none of them are his. He offers you one to look the other way, then sees that you will not.",
+        "He runs, and the goats run the other way, which is the best that could be hoped for the goats.",
+    ),
+    "Hill Brigand": (
+        "Wolfskin, sling, and a face that has done its own dentistry. He has been waiting behind that rock since dawn and is tired of it.",
+        "He sits down against his rock and swears at the day. You leave him to it.",
+    ),
+    "Mountain Lynx": (
+        "You do not see it until it is already on the path, ears tufted, tail short, eyes entirely certain about the outcome.",
+        "It goes back to the rocks with the offended dignity of a cat that meant to do that.",
+    ),
+    "Mad Hermit": (
+        "He has lived on this track for thirty years to get away from people, and here is one. He picks up a very well-chosen stick.",
+        "He retreats to his cave, shouting that this is exactly why he left.",
+    ),
+    "Stymphalian Fledgling": (
+        "The feathers are bronze, and it has been told to keep them sharp. It has not grown into its beak yet. The beak is enormous.",
+        "It flaps back toward whatever nest produced it, clanking.",
+    ),
+    "Brigand Captain": (
+        "The brigands have a captain, and the captain has a real sword, a real helmet, and a real grievance about the state of the roads.",
+        "He calls a retreat that no one else is there to obey, then obeys it himself.",
+    ),
+    # The Pine Belt
+    "Marten Swarm": (
+        "One marten is charming. A dozen martens, moving as a single furious rug, are not.",
+        "The rug comes apart into martens and pours off into the pines.",
+    ),
+    "Scorned Dryad": (
+        "She steps out of a pine that was not there yesterday. Someone has cut her sister, and every blade-carrying thing in the world is going to answer for it. You are carrying a blade.",
+        "She steps back into the tree. The needles close over her, still furious.",
+    ),
+    "Feral Charcoal-Burner": (
+        "Years of smoke have cured him like a ham. He does not speak so much as smoulder, and he has an axe for a reason.",
+        "He goes back to his kiln without a word, and the smoke takes him.",
+    ),
+    "Grey Wolf": (
+        "It has been walking beside the path for a while, just inside the trees. Now it stops pretending.",
+        "It slips back among the pines and is a shadow again, and then not even that.",
+    ),
+    "Lost Maenad": (
+        "She came up here with the god's procession and it went home without her. She has a thyrsus, a fawnskin, and no memory of what mercy is.",
+        "She wanders off toward a music only she can hear, which at least is not coming for you.",
+    ),
+    "Pair of Wolves": (
+        "Two of them, one on the path and one behind you, because that is how it is done.",
+        "The pair lopes off in two directions and will meet up later to discuss it.",
+    ),
+    "She-Bear": (
+        "The cubs are somewhere behind her, and that is all you need to know about her mood. She rises onto her hind legs to show you the size of your mistake.",
+        "She drops to all fours and goes to find her cubs, which is what she wanted all along.",
+    ),
+    "Pack Leader": (
+        "Bigger than the others and one-eared, and the others are in the trees waiting for its verdict.",
+        "It limps back to the pack, and the pack, seeing its face, decides against a second opinion.",
+    ),
+    # The Scree Fields
+    "Scree Scorpion": (
+        "It is the colour of the stones and has the temper of a hangover. You find it by nearly standing on it.",
+        "It goes back under its stone to think about what it did.",
+    ),
+    "Bone Picker": (
+        "A vulture's build on a man's legs, or the reverse. It has been following you for the last hour, in case.",
+        "It flaps up onto a boulder to wait for a different day.",
+    ),
+    "Rival Climber": (
+        "Another climber, coming down, who has decided that your purse would be a better use of the descent. He has a spear and a smile.",
+        "He remembers an appointment lower down the mountain and hurries to it.",
+    ),
+    "Harpy Chick": (
+        "Half feathers, half bad manners, all appetite. Its mother is presumably nearby, which is a thought to keep short.",
+        "It hops off across the scree, shrieking for its mother. You do not wait.",
+    ),
+    "Twin Vipers": (
+        "Two heads rising from one gap in the stones, not attached to each other, only agreeing with each other.",
+        "They pour back into the gap, one after the other, still in agreement.",
+    ),
+    "Cyclops Shepherd-Boy": (
+        "Only a boy, and only one eye, but the boy is nine feet tall and the eye has found you. He has a crook the size of a mast.",
+        "He sits down on the scree and cries in a voice that dislodges stones. You leave him to it.",
+    ),
+    "Sliding Boulder": (
+        "It was resting. Now it is not. There is a great deal of it and it has chosen your direction.",
+        "It comes to rest against a larger boulder, which looks unimpressed.",
+    ),
+    "Harpy": (
+        "She comes in low over the scree with her wings back and her arms out, and her face is the worst part. She wants what you are carrying and does not care what it is.",
+        "She lifts off with a scream and something of yours in her claws that turns out to be a strap. You keep the rest.",
+    ),
+    # The Cloud Line
+    "Mist Shade": (
+        "A shape in the fog that has your outline a moment before you make it. It reaches out with a hand that is more cold than hand.",
+        "It thins to nothing and is fog again, and the fog moves on.",
+    ),
+    "Cloud-Blind Ox": (
+        "An ox that wandered up into the cloud years ago and never found the way down. It cannot see you, which is why it is going to walk through you.",
+        "It walks on into the cloud, lowing for a barn that is far below.",
+    ),
+    "Echo That Hits Back": (
+        "You call out to see if anyone is there. Something calls back in your own voice, and then it hits you with it.",
+        "The echo dies away, saying your last word back to you, softer each time.",
+    ),
+    "Fog Wolf": (
+        "Not quite a wolf. Grey where wolves are grey, but you can see the rocks through it, and it can see you through anything.",
+        "It disperses in a gust and drifts off downhill in strands.",
+    ),
+    "Storm-Petrel Flock": (
+        "Small black birds that should be at sea, wheeling in the cloud in their hundreds, all at once deciding that you are the storm.",
+        "The flock wheels away toward a sea you cannot see from here.",
+    ),
+    "Ghost of a Lost Legionary": (
+        "He marched up here with an army long ago and never marched down. He is still in formation. He thinks you are what the army came for.",
+        "He salutes something behind you and marches on into the cloud, in step with no one.",
+    ),
+    "Walking Lightning-Struck Pine": (
+        "A pine that was struck, and burned, and got up. It walks on its roots and smells of the fire that made it.",
+        "It stops walking and puts its roots down where it stands. It looks, for a tree, relieved.",
+    ),
+    "Nephele's Hound": (
+        "A cloud in the shape of a dog, or a dog made of cloud, sent down by a goddess who is jealous of anyone who climbs. It is faster than weather.",
+        "Nephele's hound bounds back up into the sky, and the cloud closes behind it like a door.",
+    ),
+    # The Eagle Crags
+    "Crag Eagle": (
+        "It drops out of the sun with its talons open and the wind screaming in its feathers. It has done this to goats.",
+        "It beats back up into the sun, screaming its opinion of you to the whole crag.",
+    ),
+    "Nest Guardian": (
+        "A man in a cloak of eagle feathers, standing before a nest the size of a hut, who takes you for a nest robber until proved otherwise.",
+        "He steps back from the path and lets you pass, one hand still on the nest.",
+    ),
+    "Bandit on a Rope": (
+        "He swings in from the cliff face on a rope you did not see, lands in front of you, and is very pleased with the entrance.",
+        "He kicks off from the ledge and swings away on his rope, considerably less pleased with the exit.",
+    ),
+    "Griffin Fledgling": (
+        "The beak of an eagle and the hindquarters of a lion, at the age where neither half has grown into the other. It falls over. Then it gets up and comes at you.",
+        "It flaps back to its ledge in stages, resting on each one.",
+    ),
+    "Archer's Shade": (
+        "The ghost of a bowman who guarded these crags and never stopped. His arrows are cold, and he does not miss by much.",
+        "He lowers the bow and fades into the rock, still watching the path.",
+    ),
+    "The Talon Twins": (
+        "Two eagles that hunt as one, high and low, so that whichever way you look you are looking the wrong way.",
+        "They spiral upward together, arguing about whose fault it was.",
+    ),
+    "Griffin": (
+        "The full thing, grown into itself, wings like sails and a beak that opens wide enough to show you its opinion of you. It guards gold. It thinks you smell of gold.",
+        "It climbs into the wind, circles once to remember your face, and leaves.",
+    ),
+    "Aetos the Old Eagle": (
+        "Every eagle on the crag defers to this one. He is grey at the wingtips and slower than he was, and he knows exactly how much slower, and it is not enough to help you.",
+        "Aetos lifts off the rock, tired, and goes to sit on a higher one. He does not look back.",
+    ),
+    # The Snow Line
+    "Surprisingly Vicious Hare": (
+        "A hare. White, sitting in the snow, looking at you. You almost walk past it. That is when it goes for your throat.",
+        "It bounds off across the snow, leaving tracks far too close together for anything that size.",
+    ),
+    "Ice Viper": (
+        "Clear as glass and colder, coiled in the lee of a rock, waiting for something warm. You are something warm.",
+        "It slides back into a crack in the ice and is invisible again.",
+    ),
+    "Frostbitten Shade": (
+        "Someone who sat down in the snow to rest and is still resting. It would like you to sit down too. Just for a moment.",
+        "It settles back into the drift, and the drift looks like a drift again.",
+    ),
+    "White Wolf": (
+        "It has been white since it was born and hunts in a world the same colour. You see its eyes and then, too late, the rest of it.",
+        "It trots off across the snow and is gone in three strides, being the same colour as everything.",
+    ),
+    "White Lynx": (
+        "Bigger than the lynxes below and quieter, with feet like snowshoes and no interest in fair play.",
+        "It stalks off up the slope with its tail lashing and its dignity mostly intact.",
+    ),
+    "Frozen Hoplite": (
+        "He stood guard on this pass in a winter no one remembers and never stood down. The ice has made him slow, but the bronze is as sharp as the day it was cast.",
+        "He returns to his post and stands to attention, the ice re-forming over his eyes.",
+    ),
+    "Avalanche Spirit": (
+        "The snow above you clears its throat. Something in it is awake and would like to come down and meet you, all at once.",
+        "The slope settles with a long sigh, and the spirit goes back to sleep in it.",
+    ),
+    "Boreal Giant's Child": (
+        "The child of a giant of the north wind, out playing in the snow. It is twelve feet tall and does not know its own strength, which is the problem.",
+        "It sits down in the snow, sniffing, and rolls a snowball the size of a hut to console itself.",
+    ),
+    # The Windgap
+    "Gale Sprite": (
+        "A knot of wind with something like a face in it. It is small. It is also going very, very fast.",
+        "It unravels into an ordinary gust and blows off through the gap.",
+    ),
+    "Tumbling Harpy": (
+        "A harpy caught in the gap's wind, rolling over and over, furious about it, and coming your way.",
+        "The wind takes her again and she tumbles off down the gap, shrieking at it.",
+    ),
+    "Wind-Mad Pilgrim": (
+        "He came up to hear the gods in the wind, and he heard them. Now he cannot stop hearing them, and they have told him about you.",
+        "He staggers off into the gale with his hands over his ears, arguing with it.",
+    ),
+    "Kite-Winged Thief": (
+        "She has built herself wings of cloth and cane, and she can use them here, where the wind never stops. She dives for your purse.",
+        "She spreads her wings and the gap takes her up and away, empty-handed.",
+    ),
+    "Hound of the Four Winds": (
+        "A hound with the north in one eye and the south in the other, and its coat blown four ways at once. It comes at you from every direction.",
+        "It bounds off with the wind, and the wind bounds off with it.",
+    ),
+    "Thunder Ram": (
+        "A ram of the high gap whose hooves strike sparks and whose charge sounds like the sky splitting. It lowers its head, and the air goes tight.",
+        "It thunders off up the gap, and the echo takes a while to follow.",
+    ),
+    "Harpy Matron": (
+        "The mother of every harpy you have met, and she remembers each one. She comes down out of the wind like a judgement.",
+        "She rises on the gale, screaming names, and goes to count her children.",
+    ),
+    "Shade of the Gap Warden": (
+        "Before the Warden on the Black Stair there was a warden here, and this is what is left. It still asks for a toll. It still does not say what the toll is.",
+        "It steps aside, as if the toll were paid, and the wind blows through where it stood.",
+    ),
+    # The Black Stair
+    "Stair Crawler": (
+        "Something many-legged that lives in the joints of the steps and has learned that climbers stop to rest on them.",
+        "It flows back into the joints of the stair, one leg at a time, for a long time.",
+    ),
+    "Obsidian Asp": (
+        "Black as the stair and with the same sheen. It is only where the stair moves that you see it, and the stair is moving toward your ankle.",
+        "It slides away down the steps, indistinguishable from the stair again by the third one.",
+    ),
+    "Step-Counting Daimon": (
+        "A spirit that counts the steps. It has counted them for a thousand years and it does not want the count disturbed, and you are disturbing it.",
+        "It goes back to the step it was on and begins again from one. You have cost it a thousand years.",
+    ),
+    "Black Stair Hound": (
+        "A hound bred to guard a stair, with a bark that comes back off the stone twice as loud, and it has never once been told to stand down.",
+        "It goes back to its step and lies across it, watching you climb past with its head on its paws.",
+    ),
+    "Shade of a Proud King": (
+        "He climbed this stair to speak to the gods as an equal. The gods disagreed. He still wears the crown and still expects the bow.",
+        "He straightens his crown and proceeds up the stair as if the interruption had never happened.",
+    ),
+    "Bronze Automaton": (
+        "Made by a god's own smith and set here to keep the stair, it has kept it ever since. It does not tire, and it does not think, and it has raised its arm.",
+        "It stops, and clicks, and lowers its arm, and stands aside with a sound like a gate.",
+    ),
+    "Oath-Breaker's Ghost": (
+        "He swore on the stair and broke his oath, and the stair remembers. He cannot leave it, and he would very much like company.",
+        "He turns and climbs on, alone, toward an end of the stair that does not exist for him.",
+    ),
+    "Automaton Captain": (
+        "The largest of the bronze things, with a sword arm and a spare arm and a face someone bothered to engrave. It moves before you have finished seeing it.",
+        "It kneels, with a groan of bronze, and stays kneeling. The stair is yours.",
+    ),
+    # The Last Shoulder
+    "Titan's Knucklebone": (
+        "A bone the size of a hut, from a Titan buried under the mountain, and something in it still wants to roll. It rolls at you.",
+        "It rolls to a halt against the slope and lies there with one face up. It is not a good throw.",
+    ),
+    "Sleepless Sentinel": (
+        "Set to watch the shoulder below the Garden and given no relief, ever. Its eyes have not closed in an age. It sees you very clearly.",
+        "It stands aside, eyes open, and watches you all the way to the next turn.",
+    ),
+    "Chimera Cub": (
+        "Lion at the front, goat in the middle, snake at the back, and none of the three has learned to agree with the others yet. The lion part breathes a small fire.",
+        "The three parts argue about which way to run and go, in the end, the goat's way.",
+    ),
+    "Sky-Weary Giant": (
+        "A giant who has been holding up his corner of the sky, and has set it down for a moment to deal with you. The sky sags. He hurries.",
+        "He picks up his corner of the sky again, grumbling, and the sky straightens.",
+    ),
+    "Atlas' Dropped Pebble": (
+        "The Titan who holds the heavens dropped this. To him it is a pebble. To you it is a boulder falling from a very great height, repeatedly.",
+        "Atlas' pebble comes to rest, and somewhere far above, a Titan sighs about the loss.",
+    ),
+    "Young Chimera": (
+        "Grown enough that the three of it have reached an arrangement. The lion bites, the goat butts, the snake waits. The fire is no longer small.",
+        "It goes, all three of it, in the same direction, which is away.",
+    ),
+    "Hundred-Handed Stripling": (
+        "One of the hundred-handed, young, with only sixty or so hands so far. That is still sixty hands.",
+        "It backs away, waving a great many hands, and drops most of what it was holding.",
+    ),
+    "Chimera": (
+        "The full thing: a lion's roar, a goat's scream, and a serpent's hiss, all from one throat, and fire enough to cook a hillside. It has never been beaten by anyone you have heard of.",
+        "It limps off toward the summit, smoke leaking from all three mouths, to tell the dragon about you.",
+    ),
+    # The Garden Wall
+    "Garden Wasps": (
+        "Wasps of the Garden, gold-banded, drunk on fallen apples and territorial about the whole wall.",
+        "They drift back over the wall to the windfalls, sated and forgetful.",
+    ),
+    "Apple Thief": (
+        "Someone else got this far and is coming back down with an apple in his shirt and terror in his face. He will fight to keep the apple.",
+        "He drops the apple and runs. It rolls back toward the wall, as they always do.",
+    ),
+    "Hesperid's Peacock": (
+        "A peacock of the Garden, with a hundred eyes in its tail that all follow you and a scream that summons things. It fans the tail.",
+        "It folds the tail, screams once to make the point, and struts back through the gate.",
+    ),
+    "Root Serpent": (
+        "A root of the tree itself, come out under the wall and through the soil, thick as a man and moving like a snake, because up here roots do.",
+        "It withdraws under the wall, and the soil closes over it without a mark.",
+    ),
+    "Ladon's Shed Skin": (
+        "The dragon shed this last spring. It has a hundred empty faces, and it still remembers the shape of a fight.",
+        "Ladon's skin collapses into a heap of translucent scales, and the wind starts to take them.",
+    ),
+    "Lesser Head of Ladon": (
+        "The dragon has many heads and can spare one to see who is at the wall. It comes over the top on a neck as long as the path.",
+        "The head withdraws over the wall, and you hear it telling the others.",
+    ),
+    "Twin Heads of Ladon": (
+        "Two heads this time, because one was not enough. They come over the wall from either side and discuss you between themselves.",
+        "They withdraw, both of them, bickering about whose fault it was, and the wall shakes with it.",
+    ),
+    "Nymph-Guard of the Tree": (
+        "One of the daughters of Evening, who tend the tree. She would rather not fight. She is very good at it anyway.",
+        "She steps back through the gate, bows slightly, and says the dragon will see you now.",
+    ),
+    # Not in the bestiary: the one foe an event conjures (the pomegranate wall).
+    "Furious Gardener": (
+        "He has tended this wall and everything behind it for forty years, and he saw exactly what you took. The pruning hook is for pruning. It will do for you.",
+        "He goes back over the wall, muttering about climbers, and you hear him counting the pomegranates.",
+    ),
+}

@@ -185,8 +185,11 @@ bestiary can be retuned by changing a few constants.
 | 11 Last Shoulder | Titan's Knucklebone · Sleepless Sentinel · Chimera Cub · Sky-Weary Giant · Atlas' Dropped Pebble · Young Chimera · Hundred-Handed Stripling · Chimera |
 | 12 Garden Wall | Garden Wasps · Apple Thief · Hesperid's Peacock · Root Serpent · Ladon's Shed Skin · Lesser Head of Ladon · Twin Heads of Ladon · Nymph-Guard of the Tree |
 
-Each creature gets two or three lines of original flavour text and a death line,
-written at implementation.
+Each creature has two or three lines of original flavour text, shown when it
+steps onto the path, and a line for when it is beaten (`text.FOES`; written
+2026-09-22). The Furious Gardener from the pomegranate-wall event has its
+lines there too. Beaten is not always dead: most of them have somewhere else
+to be.
 
 One fight in forty drops a **pomegranate seed**.
 

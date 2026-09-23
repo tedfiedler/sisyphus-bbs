@@ -184,7 +184,11 @@ async def get_user(user_id: int) -> dict | None:
     """Return a single user by ID, or None if not found."""
     db = await get_db()
     cursor = await db.execute(
-        "SELECT id, username, email, access_level, created_at, last_login, last_seen, about_me, landing_message, file_upload_allowed FROM users WHERE id = ?",
+        """SELECT u.id, u.username, u.email, u.access_level, u.created_at, u.last_login,
+                  u.last_seen, u.about_me, u.landing_message, u.file_upload_allowed,
+                  u.invited_by, i.username AS invited_by_name
+           FROM users u LEFT JOIN users i ON i.id = u.invited_by
+           WHERE u.id = ?""",
         (user_id,),
     )
     row = await cursor.fetchone()

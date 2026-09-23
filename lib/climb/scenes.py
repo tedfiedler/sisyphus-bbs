@@ -599,6 +599,8 @@ def _after_blows(rng: Random, player: Player) -> None:
         player.scene = SUMMIT
         return
     if fight.outcome is Outcome.WON:
+        if fight.foe.kind == rules.CREATURE:
+            player.notice.append(text.FOES[fight.foe.name][1])
         spoils = rules.apply_victory(rng, c, fight)
         player.notice.append(text.SPOILS.format(drachmae=spoils.drachmae, xp=spoils.xp))
         if spoils.seed:
@@ -621,6 +623,8 @@ def _start_fight(rng: Random, player: Player, foe: rules.Foe) -> None:
     player.fight = rules.open_fight(rng, player.climber, foe)
     player.scene = FIGHT
     player.notice.append(text.FIGHT_OPENS.format(foe=with_article(foe)))
+    if foe.kind == rules.CREATURE:
+        player.notice.append(text.FOES[foe.name][0])
     player.notice += _narrate(player.fight)
     _after_blows(rng, player)
 

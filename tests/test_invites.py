@@ -218,3 +218,26 @@ async def test_deleting_a_user_takes_their_invitations_with_them(admin):
 
     await auth.delete_user(admin["id"])
     assert await invites.list_all() == []
+
+
+# ---------------------------------------------------------------------------
+# The profile
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_the_profile_says_who_invited_them(admin):
+    code = (await invites.create(admin["id"]))["code"]
+    async with anon_client() as client:
+        assert (await _register(client, username="bob", invite=code)).status_code == 302
+    bob = await auth.authenticate("bob", "password123")
+    async with await client_for(admin["id"]) as client:
+        bobs_page = (await client.get(f"/user/{bob['id']}")).text
+        admins_page = (await client.get(f"/user/{admin['id']}")).text
+    assert f'Invited by: <a href="/user/{admin["id"]}">admin</a>' in bobs_page
+    assert "Invited by" not in admins_page
+
+    # The inviter leaving takes the line with them, not the account.
+    await auth.delete_user(admin["id"])
+    async with await client_for(bob["id"]) as client:
+        assert "Invited by" not in (await client.get(f"/user/{bob['id']}")).text
+

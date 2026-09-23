@@ -19,6 +19,9 @@
         Status: <span class="{% if is_online %}text-fg{% else %}text-dim{% endif %}">{% if is_online %}ONLINE{% else %}offline{% endif %}</span>
     </p>
     <p class="meta">Member since: {{ profile_user.created_at }}</p>
+    {% if profile_user.invited_by_name %}
+    <p class="meta">Invited by: <a href="/user/{{ profile_user.invited_by }}">{{ profile_user.invited_by_name }}</a></p>
+    {% endif %}
     <p class="meta">Last login: {{ profile_user.last_login or 'Never' }}</p>
 </div>
 

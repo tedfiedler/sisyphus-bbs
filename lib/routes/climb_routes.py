@@ -263,7 +263,8 @@ async def climb_page(request: Request, user: dict = Depends(require_user)):
             "screen": scenes.screen(player, camp, people), "status": scenes.status(player),
             "notice": player.notice, "turn": player.turn,
         }
-        if player.scene in (scenes.STELE, scenes.OTHERS) and player.climber.alive:
+        # The Stele and the Herald are read by the living and the dead alike.
+        if player.scene == scenes.STELE or (player.scene == scenes.OTHERS and player.climber.alive):
             rows = [
                 {**row, "title": rules.title(row["ascents"]), "band": data.BANDS[row["level"] - 1],
                  "calling": data.CALLINGS[row["calling"]][0],
@@ -277,7 +278,7 @@ async def climb_page(request: Request, user: dict = Depends(require_user)):
             else:
                 context["others"] = [row for row in rows if row["user_id"] != user["id"]]
                 context["others_empty"] = text.OTHERS_EMPTY
-        elif player.scene == scenes.HERALD and player.climber.alive:
+        elif player.scene == scenes.HERALD:
             today = clock.today()
             await store.ensure_daily_line(today, text.DAILY[today.toordinal() % len(text.DAILY)])
             context["news"] = [(_day_label(day, today), lines) for day, lines in await store.news(today)]

@@ -272,7 +272,17 @@ def _suitor_screen(c: rules.Climber, person: Person) -> Screen:
 def screen(player: Player, camp: list[Target] | None = None, people: list[Person] | None = None) -> Screen:
     c = player.climber
     if not c.alive:
-        return Screen("Dead until dawn", list(text.DEAD))
+        # The dead may read, and nothing else. Every other scene is out of
+        # reach because it is never offered.
+        cot = Choice("b", "(B)ack to the cot", f"go:{DEAD}")
+        if player.scene == STELE:
+            return Screen("The Stele", list(text.STELE), [cot])
+        if player.scene == HERALD:
+            return Screen("The Herald's Board", list(text.HERALD), [cot])
+        return Screen("Dead until dawn", [*text.DEAD, text.DEAD_READING], [
+            Choice("n", "(N)ews from the Herald", f"go:{HERALD}"),
+            Choice("s", "The (S)tele", f"go:{STELE}"),
+        ])
 
     if player.scene == FIGHT and player.fight is not None:
         fight = player.fight

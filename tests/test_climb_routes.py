@@ -279,7 +279,7 @@ async def test_death_then_dawn(alice, dice, fixed_day):
         assert (c.purse, c.vault, c.xp) == (0, 45, 180)
         html = (await client.get(PAGE)).text
         assert text.AMBUSH in html and "15 drachmae" in html and "Dead until dawn" in html
-        assert offered(html) == []
+        assert offered(html) == ["go:herald", "go:stele"]
 
         dice()
         for action in ("go:slopes", "seek", "go:hygieia", "heal:all"):
@@ -296,6 +296,44 @@ async def test_death_then_dawn(alice, dice, fixed_day):
         turn = (await store.load(alice["id"])).turn
         await client.get(PAGE)
         assert (await store.load(alice["id"])).turn == turn
+
+
+@pytest.mark.asyncio
+async def test_the_dead_can_read_the_herald_and_the_stele(alice, dice, fixed_day):
+    """Reading is all they can do; the rest of town stays shut until dawn."""
+    async with await client_for(alice["id"]) as client:
+        await begin(client)
+        await tweak(alice["id"], hp=1)
+        await act(client, "go:slopes")
+        dice(chance=[NO_EVENT, AMBUSH], rolls=[8, "max"])
+        await act(client, "seek")
+        assert not (await store.load(alice["id"])).climber.alive
+
+        await act(client, "go:herald")
+        html = (await client.get(PAGE)).text
+        assert "Stentor" in html and "climb-news" in html                 # today's news, own death included
+        assert offered(html) == ["go:dead"]
+
+        await act(client, "go:dead")
+        html = (await client.get(PAGE)).text
+        assert "Dead until dawn" in html and text.DEAD_READING in html
+
+        await act(client, "go:stele")
+        html = (await client.get(PAGE)).text
+        assert "The Stele" in html and "dead until dawn" in html          # that is you, on the stone
+        assert offered(html) == ["go:dead"]
+
+        # Nothing else is on offer, however it is asked for.
+        turn = (await store.load(alice["id"])).turn
+        for action in ("go:agora", "go:slopes", "go:hygieia", "go:lethe", "go:camp"):
+            await act(client, action, turn=turn)
+        player = await store.load(alice["id"])
+        assert player.scene == "stele" and not player.climber.alive and player.turn == turn
+
+        # Dawn finds them on the Stele and sends them home, alive.
+        fixed_day["today"] = DAY_ONE + timedelta(days=1)
+        html = (await client.get(PAGE)).text
+        assert text.DAWN_AFTER_DEATH in html and "The Agora" in html
 
 
 @pytest.mark.asyncio

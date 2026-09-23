@@ -78,6 +78,10 @@ DEAD = (
     "You are dead until dawn. The Vault is untouched; Kallias checked twice.",
     "Come back tomorrow.",
 )
+DEAD_READING = (
+    "Stentor carries this far, and nobody has ever stopped the dead from reading "
+    "the Stele. It is mostly the dead who do."
+)
 
 DAWN = "Dawn. You are whole, rested, and owe nobody an explanation."
 DAWN_AFTER_DEATH = "Dawn. Akeso has put you back together. She says to try ducking."

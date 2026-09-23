@@ -439,6 +439,9 @@ Each ascent makes the mountain's creatures 3% tougher (health only), up to
 - **The Stele** ranks active climbers by ascents, then level, then XP, showing
   calling, title, sweetheart, and whether they are in a room, at the Camp, or
   dead until dawn.
+- **The dead can read.** A climber who is dead until dawn can still visit the
+  Herald and the Stele (and nothing else); it is mostly the dead who do
+  (added 2026-09-22).
 - **Sisyphus integration.** The game appears in `/games` beside Mille Bornes.
   It writes a `game_scores` row (game `climb`) on each level gained and, with
   `won = 1`, on each ascent — so playing counts toward the file-access
